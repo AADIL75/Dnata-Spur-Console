@@ -65,9 +65,18 @@
   .badge-green{background:var(--green-bg); color:var(--green);}
 
   label{font-size:13px; color:var(--grey); display:block; margin-bottom:6px; font-weight:600;}
-  input[type=text], select{
+  input[type=text]{
     font-size:16px; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px; width:100%;
-    background:#fff; color:var(--text); appearance:none;
+    background:#fff; color:var(--text);
+  }
+  select{
+    font-size:16px; padding:12px 40px 12px 14px; border:1.5px solid var(--border); border-radius:12px; width:100%;
+    background-color:#fff; color:var(--text);
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 14px center;
+    background-size:16px;
   }
   input[type=text]:focus, select:focus{outline:none; border-color:var(--blue);}
 
@@ -139,28 +148,18 @@
   .signin-status.ok{color:var(--green);}
   .signin-status.pending{color:var(--purple);}
 
-  .reminder{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--teal-bg);
-  }
-  .reminder.in-state{background:var(--green-bg); border-color:var(--green-border);}
-  .reminder .num{font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:6px;}
-  .reminder .sub{font-size:11.5px; color:var(--grey); margin-top:2px;}
-  .reminder-btns{display:flex; gap:8px;}
-  .rbtn{
-    border:none; border-radius:10px; padding:10px 12px; font-size:12px; font-weight:700; cursor:pointer;
-    min-width:74px;
-  }
-  .rbtn.in{background:var(--green); color:#fff;}
-  .rbtn.in.off{background:#fff; color:var(--green); border:1.5px solid var(--green-border);}
-  .rbtn.out{background:var(--amber); color:#fff;}
-  .rbtn.out.off{background:#fff; color:var(--amber); border:1.5px solid var(--amber-border);}
-  .rbtn[disabled]{opacity:.35; cursor:not-allowed;}
-
   .safety-note{background:var(--red-bg); border:1px solid var(--red-border); color:var(--red); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.5; margin-bottom:12px; display:flex; gap:8px;}
   .safety-note .ico{font-size:18px; flex-shrink:0;}
   .safety-note strong{display:block; margin-bottom:3px; font-size:13px;}
-  .reminder-hint{font-size:12px; color:var(--grey); margin-top:10px; line-height:1.5;}
+
+  /* scanner Log In / Log Out tiles — same tile system as checklist events, just teal-tinted
+     while pending so they read as "their own category" wherever they appear */
+  .evt.scanner-evt.pending{background:var(--teal-bg); border-color:#a9dee9;}
+  .evt.scanner-evt.pending .dot{border-color:var(--teal); color:var(--teal); background:#fff;}
+  .mini-section-label{
+    font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--teal); margin:6px 2px -2px; display:flex; align-items:center; gap:6px;
+  }
 
   /* ---- camera QR scan overlay (real Log In/Out for scanners) ---- */
   .scan-overlay{
@@ -272,6 +271,21 @@
   </div>
 
   <div class="card">
+    <h2><span class="icon-badge badge-teal">📡</span>Scanner Log In — before you start</h2>
+    <div class="safety-note">
+      <span class="ico">📷</span>
+      <span><strong>Required — a real physical scan, not just a tap.</strong>
+      Tap a scanner below to open the camera and point it at the QR sticker
+      stuck to that scanner. It only logs once the camera actually reads
+      that scanner's own code, so this still proves it's genuinely in your
+      hand. If your phone's camera won't work in this browser, scan the
+      sticker with your normal phone camera/QR app instead — that still
+      logs it the old way.</span>
+    </div>
+    <div class="stack" id="scanInZone"></div>
+  </div>
+
+  <div class="card">
     <h2><span class="icon-badge badge-green">✅</span>Checklist events</h2>
     <div id="checklistZone" class="stack"></div>
   </div>
@@ -279,23 +293,6 @@
   <div class="card">
     <h2><span class="icon-badge badge-pink">⭐</span>VIP bags — choose one</h2>
     <div id="vipZone" class="vip-row"></div>
-  </div>
-
-  <div class="card">
-    <h2><span class="icon-badge badge-teal">📡</span>BRS scanners &amp; mobile phones</h2>
-    <div class="safety-note">
-      <span class="ico">📷</span>
-      <span><strong>This is the real Log In / Log Out — it only counts as a genuine physical scan.</strong>
-      Tap "In" or "Out" below to open the camera and point it at the QR
-      sticker on that scanner. It only logs once the camera actually reads
-      that scanner's own code — a button tap alone does nothing, so this
-      still proves the scanner was physically in your hand and not left in
-      a ULD. If your phone's camera won't work in this browser, scan the
-      sticker with your normal phone camera/QR app as before — that still
-      logs it the old way.</span>
-    </div>
-    <div class="stack" id="reminderZone"></div>
-    <div class="reminder-hint">Tap "In" / "Out", allow camera access, then hold the scanner's sticker inside the frame until it locks on and closes automatically. Each one only logs after a matching code is read.</div>
   </div>
 
   <div class="card">
@@ -552,15 +549,6 @@
 
   function scannerCode(num, dir){ return 'SCN_' + dir.toUpperCase() + '_' + num; }
 
-  function scannerStatus(num){
-    var relevant = state.entries.filter(function(e){
-      return e.code === scannerCode(num,'in') || e.code === scannerCode(num,'out');
-    });
-    if(!relevant.length) return null;
-    var last = relevant[relevant.length - 1];
-    return { dir: last.code.indexOf('SCN_IN_') === 0 ? 'in' : 'out', time: last.time };
-  }
-
   function parseFormFieldValue(rawUrl){
     try{
       var qIndex = rawUrl.indexOf('?');
@@ -658,9 +646,9 @@
   function render(){
     renderDate();
     renderSignin();
-    renderZone('checklist', document.getElementById('checklistZone'));
+    renderScanInZone();
+    renderChecklist();
     renderVip();
-    renderReminders();
     renderProgress();
     renderLog();
     if(justLoggedCode){
@@ -692,40 +680,81 @@
     document.getElementById('supervisorSignInBtn').onclick = logSupervisorSignin;
   }
 
-  function renderZone(zoneName, container){
+  function buildEventTile(evt){
+    var hits = entriesFor(evt.code);
+    var done = hits.length > 0;
+    var btn = document.createElement('button');
+    btn.setAttribute('data-code', evt.code);
+
+    var optionalTag = evt.optional ? '<span class="optional-tag">If applicable</span>' : '';
+
+    if(evt.once){
+      // one-off event: green + checkmark once logged, matches a normal checklist tick
+      btn.className = 'evt ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
+      var statusText = done
+        ? ('Done at ' + hits[hits.length-1].time)
+        : (evt.optional ? "Only log this if it happens — otherwise leave it" : 'Not done yet — tap to log');
+      btn.innerHTML =
+        '<span class="dot">' + (done ? '✓' : evt.icon) + '</span>' +
+        '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
+        '<span class="code-tag">' + evt.code + '</span>';
+    } else {
+      // repeatable event: can happen several times a shift — never looks "locked done",
+      // always inviting another tap, shows a running count instead of a checkmark
+      btn.className = 'evt repeatable ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
+      var statusText2 = done
+        ? ('Logged ' + hits.length + '× so far — last ' + hits[hits.length-1].time + ' — tap again if it happens again')
+        : (evt.optional ? 'Only tap this if the situation actually comes up' : 'Can happen more than once — tap every time it does');
+      btn.innerHTML =
+        '<span class="dot">' + (done ? hits.length : evt.icon) + '</span>' +
+        '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText2 + '</span></span>' +
+        '<span class="code-tag">' + evt.code + '</span>';
+    }
+    btn.onclick = function(){ logChecklistEvent(evt); };
+    return btn;
+  }
+
+  function buildScannerTile(num, dir){
+    var hits = entriesFor(scannerCode(num, dir));
+    var done = hits.length > 0;
+    var btn = document.createElement('button');
+    btn.setAttribute('data-code', scannerCode(num, dir));
+    btn.className = 'evt scanner-evt ' + (done ? 'done' : 'pending');
+    var label = 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out');
+    var statusText = done
+      ? ('Logged at ' + hits[hits.length-1].time + ' — tap to re-scan')
+      : ('Tap, then point camera at Scanner ' + num + "'s sticker");
+    btn.innerHTML =
+      '<span class="dot">' + (done ? '✓' : '📷') + '</span>' +
+      '<span class="evt-text"><span class="label">' + label + '</span><br><span class="status">' + statusText + '</span></span>' +
+      '<span class="code-tag">' + num + '</span>';
+    btn.onclick = function(){ openScanner(num, dir); };
+    return btn;
+  }
+
+  function renderScanInZone(){
+    var container = document.getElementById('scanInZone');
     container.innerHTML = '';
-    EVENTS.filter(function(e){ return e.zone === zoneName; }).forEach(function(evt){
-      var hits = entriesFor(evt.code);
-      var done = hits.length > 0;
-      var btn = document.createElement('button');
-      btn.setAttribute('data-code', evt.code);
+    SCANNERS.forEach(function(num){
+      container.appendChild(buildScannerTile(num, 'in'));
+    });
+  }
 
-      var optionalTag = evt.optional ? '<span class="optional-tag">If applicable</span>' : '';
-
-      if(evt.once){
-        // one-off event: green + checkmark once logged, matches a normal checklist tick
-        btn.className = 'evt ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
-        var statusText = done
-          ? ('Done at ' + hits[hits.length-1].time)
-          : (evt.optional ? "Only log this if it happens — otherwise leave it" : 'Not done yet — tap to log');
-        btn.innerHTML =
-          '<span class="dot">' + (done ? '✓' : evt.icon) + '</span>' +
-          '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
-          '<span class="code-tag">' + evt.code + '</span>';
-      } else {
-        // repeatable event: can happen several times a shift — never looks "locked done",
-        // always inviting another tap, shows a running count instead of a checkmark
-        btn.className = 'evt repeatable ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
-        var statusText = done
-          ? ('Logged ' + hits.length + '× so far — last ' + hits[hits.length-1].time + ' — tap again if it happens again')
-          : (evt.optional ? 'Only tap this if the situation actually comes up' : 'Can happen more than once — tap every time it does');
-        btn.innerHTML =
-          '<span class="dot">' + (done ? hits.length : evt.icon) + '</span>' +
-          '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
-          '<span class="code-tag">' + evt.code + '</span>';
+  function renderChecklist(){
+    var container = document.getElementById('checklistZone');
+    container.innerHTML = '';
+    EVENTS.filter(function(e){ return e.zone === 'checklist'; }).forEach(function(evt){
+      if(evt.code === 'BMA'){
+        // Scanner Log Out happens right before the "all scanners accounted for" check
+        var label = document.createElement('div');
+        label.className = 'mini-section-label';
+        label.textContent = '📡 Scanner Log Out — before Event 12';
+        container.appendChild(label);
+        SCANNERS.forEach(function(num){
+          container.appendChild(buildScannerTile(num, 'out'));
+        });
       }
-      btn.onclick = function(){ logChecklistEvent(evt); };
-      container.appendChild(btn);
+      container.appendChild(buildEventTile(evt));
     });
   }
 
@@ -745,43 +774,30 @@
     });
   }
 
-  function renderReminders(){
-    var container = document.getElementById('reminderZone');
-    container.innerHTML = '';
-    SCANNERS.forEach(function(num){
-      var status = scannerStatus(num);
-      var row = document.createElement('div');
-      row.className = 'reminder' + (status && status.dir === 'in' ? ' in-state' : '');
-      var subText = status
-        ? ('Logged ' + status.dir + ' at ' + status.time)
-        : 'Not scanned yet this shift';
-      row.innerHTML =
-        '<div><div class="num">📡 Scanner ' + num + '</div>' +
-        '<div class="sub">' + subText + '</div></div>' +
-        '<div class="reminder-btns">' +
-          '<button class="rbtn in ' + (status && status.dir === 'in' ? '' : 'off') + '" data-act="in">📷 In</button>' +
-          '<button class="rbtn out ' + (status && status.dir === 'out' ? '' : 'off') + '" data-act="out">📷 Out</button>' +
-        '</div>';
-      row.querySelector('[data-act="in"]').onclick = function(){ openScanner(num, 'in'); };
-      row.querySelector('[data-act="out"]').onclick = function(){ openScanner(num, 'out'); };
-      container.appendChild(row);
-    });
-  }
-
   function renderProgress(){
     // optional/situational events (RDB, PNB, LBR) don't count toward the required
     // total or the "still to do" list — they may not apply at all this shift.
     var checklist = EVENTS.filter(function(e){ return (e.zone === 'checklist' || e.zone === 'signin') && !e.optional; });
     var done = checklist.filter(function(e){ return entriesFor(e.code).length > 0; });
     var vipDone = EVENTS.filter(function(e){ return e.zone === 'vip'; }).some(function(e){ return entriesFor(e.code).length > 0; });
-    var total = checklist.length + 1;
-    var completed = done.length + (vipDone ? 1 : 0);
+
+    // scanner Log In / Log Out are mandatory too — one entry per scanner per direction
+    var scannerItems = [];
+    SCANNERS.forEach(function(num){
+      scannerItems.push({ code: scannerCode(num, 'in'),  chip: num + ' In'  });
+      scannerItems.push({ code: scannerCode(num, 'out'), chip: num + ' Out' });
+    });
+    var scannerDone = scannerItems.filter(function(s){ return entriesFor(s.code).length > 0; });
+
+    var total = checklist.length + 1 + scannerItems.length;
+    var completed = done.length + (vipDone ? 1 : 0) + scannerDone.length;
     var pct = total ? Math.round((completed/total)*100) : 0;
     document.getElementById('progressBar').style.width = pct + '%';
     document.getElementById('progressLabel').textContent = completed + ' / ' + total + ' done';
 
     var missing = checklist.filter(function(e){ return entriesFor(e.code).length === 0; }).map(function(e){ return e.code; });
     if(!vipDone) missing.push('VIP Y/N');
+    scannerItems.forEach(function(s){ if(entriesFor(s.code).length === 0) missing.push(s.chip); });
 
     var countEl = document.getElementById('missingCount');
     var chipsEl = document.getElementById('missingChips');
@@ -791,7 +807,7 @@
         '<div class="celebrate">' +
           '<span class="emoji">🎉</span>' +
           '<div class="msg">All required items logged!</div>' +
-          '<div class="sub">Nice work — just double check any "if applicable" items and scanners.</div>' +
+          '<div class="sub">Nice work — just double check any "if applicable" items too.</div>' +
         '</div>';
     } else {
       countEl.textContent = missing.length + ' left';
