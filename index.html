@@ -142,12 +142,13 @@
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--teal-bg);
   }
+  .reminder.in-state{background:var(--green-bg); border-color:var(--green-border);}
   .reminder .num{font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:6px;}
   .reminder .sub{font-size:11.5px; color:var(--grey); margin-top:2px;}
   .reminder-btns{display:flex; gap:8px;}
   .rbtn{
-    border:none; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
-    min-width:64px;
+    border:none; border-radius:10px; padding:10px 12px; font-size:12px; font-weight:700; cursor:pointer;
+    min-width:74px;
   }
   .rbtn.in{background:var(--green); color:#fff;}
   .rbtn.in.off{background:#fff; color:var(--green); border:1.5px solid var(--green-border);}
@@ -159,6 +160,25 @@
   .safety-note .ico{font-size:18px; flex-shrink:0;}
   .safety-note strong{display:block; margin-bottom:3px; font-size:13px;}
   .reminder-hint{font-size:12px; color:var(--grey); margin-top:10px; line-height:1.5;}
+
+  /* ---- camera QR scan overlay (real Log In/Out for scanners) ---- */
+  .scan-overlay{
+    position:fixed; inset:0; background:rgba(10,8,28,.92); z-index:400;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .scan-overlay.show{opacity:1; pointer-events:auto;}
+  .scan-panel{background:#111225; border-radius:20px; padding:16px; width:100%; max-width:420px; box-shadow:0 12px 40px rgba(0,0,0,.4);}
+  .scan-header{display:flex; align-items:center; justify-content:space-between; color:#fff; margin-bottom:12px;}
+  .scan-header span{font-size:14.5px; font-weight:800;}
+  .scan-close{background:rgba(255,255,255,.12); border:none; color:#fff; width:32px; height:32px; border-radius:10px; font-size:16px; cursor:pointer;}
+  .scan-video-wrap{position:relative; border-radius:14px; overflow:hidden; background:#000; aspect-ratio:1/1;}
+  .scan-video-wrap video{width:100%; height:100%; object-fit:cover; display:block;}
+  .scan-frame{
+    position:absolute; inset:14%; border:3px solid rgba(255,255,255,.85); border-radius:16px;
+    box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none;
+  }
+  .scan-status{color:#e7e7f5; font-size:12.5px; line-height:1.5; margin-top:12px; text-align:center; min-height:34px;}
 
   .log-list{max-height:240px; overflow-y:auto; font-size:13px;}
   .log-row{display:flex; gap:10px; padding:8px 2px; border-bottom:1px solid #f0f0f0;}
@@ -263,15 +283,18 @@
   <div class="card">
     <h2><span class="icon-badge badge-teal">📡</span>BRS scanners &amp; mobile phones</h2>
     <div class="safety-note">
-      <span class="ico">🛑</span>
-      <span><strong>This isn't the real Log In / Log Out.</strong>
-      That still has to be a physical scan of the QR code stuck to the
-      scanner itself — that's what proves it's actually in your hand and
-      not left inside a ULD. This section is just a personal reminder so
-      you can see at a glance which scanners you've already dealt with.</span>
+      <span class="ico">📷</span>
+      <span><strong>This is the real Log In / Log Out — it only counts as a genuine physical scan.</strong>
+      Tap "In" or "Out" below to open the camera and point it at the QR
+      sticker on that scanner. It only logs once the camera actually reads
+      that scanner's own code — a button tap alone does nothing, so this
+      still proves the scanner was physically in your hand and not left in
+      a ULD. If your phone's camera won't work in this browser, scan the
+      sticker with your normal phone camera/QR app as before — that still
+      logs it the old way.</span>
     </div>
     <div class="stack" id="reminderZone"></div>
-    <div class="reminder-hint">Tap "In" right after you physically scan a scanner's QR code to check it in, and "Out" once you've physically scanned it back at the end of the shift. These taps don't submit anything anywhere — they only reset locally for a new shift.</div>
+    <div class="reminder-hint">Tap "In" / "Out", allow camera access, then hold the scanner's sticker inside the frame until it locks on and closes automatically. Each one only logs after a matching code is read.</div>
   </div>
 
   <div class="card">
@@ -295,6 +318,23 @@
   </div>
 </div>
 
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-panel">
+    <div class="scan-header">
+      <span id="scanTitle">Scan scanner</span>
+      <button class="scan-close" id="scanCloseBtn">✕</button>
+    </div>
+    <div class="scan-video-wrap">
+      <video id="scanVideo" playsinline muted autoplay></video>
+      <div class="scan-frame"></div>
+    </div>
+    <div class="scan-status" id="scanStatus">Point your camera at the QR code on the scanner</div>
+  </div>
+</div>
+<canvas id="scanCanvas" style="display:none;"></canvas>
+
+<!-- QR decoding library, used only for the camera-based scanner Log In/Out below -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
   // ---- Google Form this console submits to (decoded from your printed QR codes) ----
   var FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSdn0IWumBH5a-OJ519QycvCNawb6NvdObF_kUsKNvla_nctgQ/formResponse';
@@ -374,11 +414,15 @@
       text:function(){ return 'Event Log VIPN: NIL VIP Bags loaded. Operations Informed'; } }
   ];
 
-  // ---- Scanner reminders — local only, never submitted anywhere ----
+  // ---- BRS scanners — Log In/Out now submits for real, but only after the
+  // console's camera reads that scanner's own physical QR sticker ----
   var SCANNERS = ['400', '401', '402'];
+  function scannerText(num, dir){
+    return 'Scanner Log ' + (dir === 'in' ? 'In' : 'Out') + ': BRS Scanner Number - ' + num;
+  }
 
   // ---- Local, per-device, per-shift state ----
-  var state = { entries: [], reminders: {} }; // entries: {code,time,label}; reminders: {"400":"in"|"out"|undefined}
+  var state = { entries: [] }; // entries: {code,time,label}
   var justLoggedCode = null;
 
   function todayStr(){
@@ -397,10 +441,10 @@
   function load(){
     var savedDate = localStorage.getItem('spur_shift_date');
     if(savedDate === todayStr()){
-      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[],"reminders":{}}');
-      if(!state.reminders) state.reminders = {};
+      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
+      if(!state.entries) state.entries = [];
     } else {
-      state = { entries: [], reminders: {} };
+      state = { entries: [] };
       persistState();
     }
     document.getElementById('flightInput').value = localStorage.getItem('spur_flight') || 'ANA NH212';
@@ -455,7 +499,7 @@
       body:"This clears today's local checklist on this device. It does not affect anything already submitted to the Sheet.",
       confirmLabel:'Start fresh',
       onConfirm:function(){
-        state = { entries: [], reminders: {} };
+        state = { entries: [] };
         persistState();
         render();
         showToast('Fresh shift started on this device', '✨');
@@ -502,11 +546,110 @@
     showToast(name + ' signed in', '👋');
   }
 
-  function setReminder(num, dir){
-    state.reminders[num] = dir;
-    persistState();
-    render();
+  // ---- Camera QR scan for scanner Log In/Out (the real safety check) ----
+  var scanState = { stream: null, rafId: null, num: null, dir: null };
+
+  function scannerCode(num, dir){ return 'SCN_' + dir.toUpperCase() + '_' + num; }
+
+  function scannerStatus(num){
+    var relevant = state.entries.filter(function(e){
+      return e.code === scannerCode(num,'in') || e.code === scannerCode(num,'out');
+    });
+    if(!relevant.length) return null;
+    var last = relevant[relevant.length - 1];
+    return { dir: last.code.indexOf('SCN_IN_') === 0 ? 'in' : 'out', time: last.time };
   }
+
+  function parseFormFieldValue(rawUrl){
+    try{
+      var qIndex = rawUrl.indexOf('?');
+      if(qIndex === -1) return null;
+      var qs = rawUrl.substring(qIndex + 1);
+      var params = qs.split('&');
+      for(var i = 0; i < params.length; i++){
+        var eqIdx = params[i].indexOf('=');
+        if(eqIdx === -1) continue;
+        var key = params[i].substring(0, eqIdx);
+        var val = params[i].substring(eqIdx + 1);
+        if(key === FORM_FIELD){
+          return decodeURIComponent(val.replace(/\+/g, ' '));
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function openScanner(num, dir){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showToast('Camera scanning isn\'t supported in this browser — scan the sticker with your phone\'s normal camera/QR app instead', '📷');
+      return;
+    }
+    scanState.num = num;
+    scanState.dir = dir;
+    document.getElementById('scanTitle').textContent = 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out');
+    document.getElementById('scanStatus').textContent = 'Point your camera at the QR code on the scanner';
+    document.getElementById('scanOverlay').classList.add('show');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(function(stream){
+        scanState.stream = stream;
+        var video = document.getElementById('scanVideo');
+        video.srcObject = stream;
+        video.play();
+        scanState.rafId = requestAnimationFrame(scanLoop);
+      })
+      .catch(function(err){
+        document.getElementById('scanStatus').textContent =
+          'Could not open the camera (' + (err && err.message ? err.message : 'permission denied') + '). Check this page has camera permission, or scan the sticker with your normal camera/QR app instead.';
+      });
+  }
+
+  function scanLoop(){
+    if(!window.jsQR){
+      document.getElementById('scanStatus').textContent = 'QR scanning library failed to load — check your connection, or scan the sticker with your normal camera/QR app instead.';
+      return;
+    }
+    var video = document.getElementById('scanVideo');
+    var canvas = document.getElementById('scanCanvas');
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(imageData.data, imageData.width, imageData.height);
+      if(code && code.data){
+        handleScanResult(code.data);
+        return;
+      }
+    }
+    scanState.rafId = requestAnimationFrame(scanLoop);
+  }
+
+  function handleScanResult(rawText){
+    var value = parseFormFieldValue(rawText);
+    var expected = scannerText(scanState.num, scanState.dir);
+    if(value && value.trim() === expected){
+      var num = scanState.num, dir = scanState.dir;
+      closeScanner();
+      fire(scannerCode(num, dir), 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out'), value);
+      showToast('Scanner ' + num + ' logged ' + dir + ' ✓', dir === 'in' ? '✅' : '👋');
+    } else {
+      document.getElementById('scanStatus').textContent =
+        "That's not Scanner " + scanState.num + "'s Log " + (scanState.dir === 'in' ? 'In' : 'Out') + " code — try again.";
+      scanState.rafId = requestAnimationFrame(scanLoop);
+    }
+  }
+
+  function closeScanner(){
+    if(scanState.rafId) cancelAnimationFrame(scanState.rafId);
+    if(scanState.stream){ scanState.stream.getTracks().forEach(function(t){ t.stop(); }); }
+    scanState.stream = null;
+    scanState.rafId = null;
+    document.getElementById('scanOverlay').classList.remove('show');
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('scanCloseBtn').onclick = closeScanner;
+  });
 
   // ---- Rendering ----
   function entriesFor(code){ return state.entries.filter(function(e){ return e.code === code; }); }
@@ -605,18 +748,21 @@
     var container = document.getElementById('reminderZone');
     container.innerHTML = '';
     SCANNERS.forEach(function(num){
-      var dir = state.reminders[num];
+      var status = scannerStatus(num);
       var row = document.createElement('div');
-      row.className = 'reminder';
+      row.className = 'reminder' + (status && status.dir === 'in' ? ' in-state' : '');
+      var subText = status
+        ? ('Logged ' + status.dir + ' at ' + status.time)
+        : 'Not scanned yet this shift';
       row.innerHTML =
         '<div><div class="num">📡 Scanner ' + num + '</div>' +
-        '<div class="sub">' + (dir === 'in' ? 'Marked logged in' : dir === 'out' ? 'Marked logged out' : 'Not marked yet') + '</div></div>' +
+        '<div class="sub">' + subText + '</div></div>' +
         '<div class="reminder-btns">' +
-          '<button class="rbtn in ' + (dir === 'in' ? '' : 'off') + '" data-act="in">In</button>' +
-          '<button class="rbtn out ' + (dir === 'out' ? '' : 'off') + '" data-act="out">Out</button>' +
+          '<button class="rbtn in ' + (status && status.dir === 'in' ? '' : 'off') + '" data-act="in">📷 In</button>' +
+          '<button class="rbtn out ' + (status && status.dir === 'out' ? '' : 'off') + '" data-act="out">📷 Out</button>' +
         '</div>';
-      row.querySelector('[data-act="in"]').onclick = function(){ setReminder(num, 'in'); };
-      row.querySelector('[data-act="out"]').onclick = function(){ setReminder(num, 'out'); };
+      row.querySelector('[data-act="in"]').onclick = function(){ openScanner(num, 'in'); };
+      row.querySelector('[data-act="out"]').onclick = function(){ openScanner(num, 'out'); };
       container.appendChild(row);
     });
   }
