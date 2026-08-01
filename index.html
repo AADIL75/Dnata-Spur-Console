@@ -30,8 +30,16 @@
     background:linear-gradient(120deg,#4338ca,#1a56db 55%,#0891b2);
     color:#fff; padding:16px 16px 14px; box-shadow:0 4px 14px rgba(37,33,111,.18);
   }
+  .topbar-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .topbar h1{font-size:18px; margin:0 0 2px; font-weight:800; display:flex; align-items:center; gap:8px;}
-  .topbar .tagline{font-size:12px; opacity:.85; margin-bottom:10px;}
+  .topbar .tagline{font-size:12px; opacity:.85; margin-bottom:2px;}
+  .topbar .date-line{font-size:12px; opacity:.85; margin-bottom:10px; font-weight:600;}
+  .newshift-btn{
+    background:rgba(255,255,255,.16); border:1.5px solid rgba(255,255,255,.4); color:#fff;
+    border-radius:10px; padding:9px 12px; font-size:12.5px; font-weight:700; cursor:pointer;
+    flex-shrink:0; white-space:nowrap;
+  }
+  .newshift-btn:active{background:rgba(255,255,255,.3);}
   .progress-wrap{background:rgba(255,255,255,.25); border-radius:20px; height:14px; overflow:hidden;}
   .progress-bar{background:linear-gradient(90deg,#ffd166,#ffffff); height:100%; width:0%; transition:width .35s ease; border-radius:20px;}
   .progress-label{font-size:12.5px; color:rgba(255,255,255,.9); margin-top:6px; display:flex; justify-content:space-between;}
@@ -106,10 +114,12 @@
   .evt.repeatable.pending .status{color:var(--grey); font-weight:400;}
   .evt.repeatable .code-tag{background:#fff; border-color:#c3d6fb; color:var(--blue-dark);}
 
-  /* optional / situational events — not counted toward "still to do"; muted until logged */
-  .evt.optional.pending{background:#fff; border-style:dashed;}
-  .evt.optional.pending .status{color:var(--grey); font-style:italic;}
-  .optional-tag{font-size:10px; font-weight:700; letter-spacing:.03em; color:var(--grey); background:var(--grey-bg); border:1px solid var(--border); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; text-transform:uppercase;}
+  /* optional / situational events — not counted toward "still to do"; called out in orange
+     so it's obviously a different category from "must do" (grey/blue) and "done" (green) */
+  .evt.optional.pending{background:var(--orange-bg); border-color:var(--orange); border-style:dashed;}
+  .evt.optional.pending .dot{border-color:var(--orange); color:var(--orange); background:#fff;}
+  .evt.optional.pending .status{color:var(--orange); font-style:italic; font-weight:600;}
+  .optional-tag{font-size:10px; font-weight:700; letter-spacing:.03em; color:var(--orange); background:#fff; border:1px solid var(--orange); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; text-transform:uppercase;}
 
   .vip-row{display:flex; gap:10px;}
   .vip-row .evt{flex:1; flex-direction:column; text-align:center; align-items:center; min-height:86px; justify-content:center;}
@@ -205,8 +215,14 @@
 <body>
 
 <div class="topbar">
-  <h1>✈️ Dnata Spur Console</h1>
-  <div class="tagline">One tap logs it. See exactly what's done and what's not.</div>
+  <div class="topbar-row">
+    <div>
+      <h1>✈️ Dnata Spur Console</h1>
+      <div class="tagline">One tap logs it. See exactly what's done and what's not.</div>
+    </div>
+    <button class="newshift-btn" onclick="newShift()">↻ New shift</button>
+  </div>
+  <div class="date-line" id="dateLine"></div>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="progress-label"><span>This shift, this device</span><b id="progressLabel">0 / 0 done</b></div>
 </div>
@@ -259,10 +275,7 @@
   </div>
 
   <div class="card">
-    <div class="toolbar">
-      <h2 style="margin:0;"><span class="icon-badge badge-blue">🕒</span>Activity log</h2>
-      <button class="ghost-btn" onclick="newShift()">↻ New shift</button>
-    </div>
+    <h2><span class="icon-badge badge-blue">🕒</span>Activity log</h2>
     <div class="log-list" id="logList"></div>
   </div>
 
@@ -324,7 +337,7 @@
       label:'Event 5: Reject scans checked / actioned',
       text:function(){ return 'Event Log CRS: Reject scans in BRS checked and actioned if required'; } },
 
-    { code:'VIP',  zone:'checklist', once:true, icon:'⭐',
+    { code:'VIP',  zone:'checklist', once:true, optional:true, icon:'🏷️',
       label:'Event 6: VIP bags tagged, cleared and loaded',
       text:function(){ return 'Event Log VIP: VIP bags tagged, cleared and loaded'; } },
 
@@ -348,7 +361,7 @@
       label:'Event 11: ANA informed — late bags received',
       text:function(){ return 'Event Log LBR: ANA informed when late bags received'; } },
 
-    { code:'BMA',  zone:'checklist', once:true, icon:'📱',
+    { code:'BMA',  zone:'checklist', once:true, icon:'🧰',
       label:'Event 12: All BRS scanners & phones accounted for',
       text:function(){ return 'Event Log BMA: All BRS scanners & mobile phones accounted for'; } },
 
@@ -371,6 +384,14 @@
   function todayStr(){
     var d = new Date();
     return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+  }
+
+  function renderDate(){
+    var d = new Date();
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('dateLine').textContent =
+      '📅 ' + days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
   }
 
   function load(){
@@ -491,6 +512,7 @@
   function entriesFor(code){ return state.entries.filter(function(e){ return e.code === code; }); }
 
   function render(){
+    renderDate();
     renderSignin();
     renderZone('checklist', document.getElementById('checklistZone'));
     renderVip();
