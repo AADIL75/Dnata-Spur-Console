@@ -11,29 +11,50 @@
     --grey:#5f6368; --grey-bg:#f4f5f6; --border:#e1e3e6; --text:#1b1c1d;
     --blue:#1a56db; --blue-dark:#1442ab;
     --red:#b3261e; --red-bg:#fdeceb; --red-border:#f3b3ae;
-    --radius:14px;
+    --purple:#7c3aed; --purple-bg:#f1e9fe;
+    --teal:#0891b2; --teal-bg:#e3f6fb;
+    --pink:#db2777; --pink-bg:#fdeaf3;
+    --orange:#ea580c; --orange-bg:#feefe4;
+    --radius:16px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html{-webkit-text-size-adjust:100%;}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    background:#f0f1f3; color:var(--text); margin:0; padding:0 0 48px;
+    background:#f3f2fb; color:var(--text); margin:0; padding:0 0 48px;
     -webkit-font-smoothing:antialiased;
   }
+
   .topbar{
-    position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--border);
-    padding:14px 16px 12px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+    position:sticky; top:0; z-index:10;
+    background:linear-gradient(120deg,#4338ca,#1a56db 55%,#0891b2);
+    color:#fff; padding:16px 16px 14px; box-shadow:0 4px 14px rgba(37,33,111,.18);
   }
-  .topbar h1{font-size:18px; margin:0 0 8px; font-weight:700;}
-  .progress-wrap{background:var(--grey-bg); border-radius:20px; height:14px; overflow:hidden;}
-  .progress-bar{background:linear-gradient(90deg,#34a853,#1e8e3e); height:100%; width:0%; transition:width .35s ease; border-radius:20px;}
-  .progress-label{font-size:13px; color:var(--grey); margin-top:6px; display:flex; justify-content:space-between;}
-  .progress-label b{color:var(--text);}
+  .topbar h1{font-size:18px; margin:0 0 2px; font-weight:800; display:flex; align-items:center; gap:8px;}
+  .topbar .tagline{font-size:12px; opacity:.85; margin-bottom:10px;}
+  .progress-wrap{background:rgba(255,255,255,.25); border-radius:20px; height:14px; overflow:hidden;}
+  .progress-bar{background:linear-gradient(90deg,#ffd166,#ffffff); height:100%; width:0%; transition:width .35s ease; border-radius:20px;}
+  .progress-label{font-size:12.5px; color:rgba(255,255,255,.9); margin-top:6px; display:flex; justify-content:space-between;}
+  .progress-label b{color:#fff;}
 
   .wrap{padding:14px 14px 8px; max-width:640px; margin:0 auto;}
-  .card{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.03);}
-  .card h2{font-size:12.5px; margin:0 0 12px; color:var(--grey); text-transform:uppercase; letter-spacing:.06em; font-weight:700;}
-  .card h2 .count{float:right; text-transform:none; letter-spacing:0; font-weight:600; color:var(--text);}
+  .card{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; box-shadow:0 2px 10px rgba(30,30,60,.05);}
+  .card h2{
+    font-size:13px; margin:0 0 12px; color:var(--text); font-weight:800;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h2 .icon-badge{
+    width:26px; height:26px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-size:14px; flex-shrink:0;
+  }
+  .card h2 .count{margin-left:auto; font-weight:700; font-size:12px; color:var(--grey);}
+
+  .badge-purple{background:var(--purple-bg); color:var(--purple);}
+  .badge-teal{background:var(--teal-bg); color:var(--teal);}
+  .badge-pink{background:var(--pink-bg); color:var(--pink);}
+  .badge-orange{background:var(--orange-bg); color:var(--orange);}
+  .badge-blue{background:#e8eefc; color:var(--blue);}
+  .badge-green{background:var(--green-bg); color:var(--green);}
 
   label{font-size:13px; color:var(--grey); display:block; margin-bottom:6px; font-weight:600;}
   input[type=text], select{
@@ -43,7 +64,12 @@
   input[type=text]:focus, select:focus{outline:none; border-color:var(--blue);}
 
   .missing-chip{display:inline-block; background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-border); border-radius:20px; padding:5px 12px; font-size:12.5px; margin:0 6px 6px 0; font-weight:600;}
-  .all-done-chip{display:inline-block; background:var(--green-bg); color:var(--green); border:1px solid var(--green-border); border-radius:20px; padding:5px 12px; font-size:12.5px; font-weight:600;}
+  .celebrate{
+    text-align:center; padding:10px 4px 4px;
+  }
+  .celebrate .emoji{font-size:34px; display:block; margin-bottom:6px;}
+  .celebrate .msg{font-weight:800; color:var(--green); font-size:14.5px;}
+  .celebrate .sub{font-size:12px; color:var(--grey); margin-top:4px;}
 
   .stack{display:flex; flex-direction:column; gap:10px;}
   .evt{
@@ -54,12 +80,12 @@
   }
   .evt:active{transform:scale(0.985);}
   .evt .dot{
-    width:22px; height:22px; border-radius:50%; flex-shrink:0; border:2px solid var(--border); background:#fff;
-    display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff;
+    width:34px; height:34px; border-radius:11px; flex-shrink:0; border:2px solid var(--border); background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
   }
-  .evt.done .dot{background:var(--green); border-color:var(--green);}
+  .evt.done .dot{background:var(--green); border-color:var(--green); color:#fff;}
   .evt-text{flex:1; min-width:0;}
-  .evt .label{font-size:14.5px; line-height:1.35; font-weight:600;}
+  .evt .label{font-size:14.5px; line-height:1.35; font-weight:700;}
   .evt .status{font-size:12px; margin-top:2px; color:var(--grey);}
   .evt.done{background:var(--green-bg); border-color:var(--green-border);}
   .evt.done .status{color:var(--green); font-weight:600;}
@@ -67,11 +93,16 @@
   .evt .code-tag{font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--grey); background:#fff; border:1px solid var(--border); border-radius:6px; padding:2px 6px; flex-shrink:0;}
   .evt.done .code-tag{background:#fff; border-color:var(--green-border); color:var(--green);}
 
+  @keyframes pop{
+    0%{transform:scale(1);} 40%{transform:scale(1.16);} 100%{transform:scale(1);}
+  }
+  .evt.just-logged .dot{animation:pop .35s ease;}
+
   /* repeatable events (can happen more than once a shift) stay visually "open", never locked-green */
   .evt.repeatable{background:#eef3ff; border-color:#c3d6fb;}
-  .evt.repeatable .dot{background:var(--blue); border-color:var(--blue); color:#fff; font-size:11px; font-weight:700;}
+  .evt.repeatable .dot{background:#fff; border-color:var(--blue);}
+  .evt.repeatable.done .dot{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:800; font-size:14px;}
   .evt.repeatable .status{color:var(--blue-dark); font-weight:600;}
-  .evt.repeatable.pending .dot{background:#fff; border-color:var(--border); color:var(--grey);}
   .evt.repeatable.pending .status{color:var(--grey); font-weight:400;}
   .evt.repeatable .code-tag{background:#fff; border-color:#c3d6fb; color:var(--blue-dark);}
 
@@ -81,26 +112,27 @@
   .optional-tag{font-size:10px; font-weight:700; letter-spacing:.03em; color:var(--grey); background:var(--grey-bg); border:1px solid var(--border); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; text-transform:uppercase;}
 
   .vip-row{display:flex; gap:10px;}
-  .vip-row .evt{flex:1; flex-direction:column; text-align:center; align-items:center; min-height:78px; justify-content:center;}
+  .vip-row .evt{flex:1; flex-direction:column; text-align:center; align-items:center; min-height:86px; justify-content:center;}
+  .vip-row .evt .dot{font-size:20px;}
   .vip-row .evt .label{font-size:13.5px;}
 
-  .signin-form{border:1.5px solid var(--border); border-radius:12px; padding:14px; background:var(--grey-bg);}
+  .signin-form{border:1.5px solid var(--border); border-radius:12px; padding:14px; background:var(--purple-bg);}
   .signin-form.done{background:var(--green-bg); border-color:var(--green-border);}
   .signin-row{display:flex; flex-direction:column; gap:10px;}
   .signin-row button{
-    background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px 14px;
+    background:var(--purple); color:#fff; border:none; border-radius:12px; padding:13px 14px;
     font-size:15px; font-weight:700; cursor:pointer;
   }
-  .signin-row button:active{background:var(--blue-dark);}
+  .signin-row button:active{opacity:.85;}
   .signin-status{font-size:12.5px; margin-top:10px; font-weight:600;}
   .signin-status.ok{color:var(--green);}
-  .signin-status.pending{color:var(--amber);}
+  .signin-status.pending{color:var(--purple);}
 
   .reminder{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--grey-bg);
+    border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--teal-bg);
   }
-  .reminder .num{font-weight:700; font-size:14.5px;}
+  .reminder .num{font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:6px;}
   .reminder .sub{font-size:11.5px; color:var(--grey); margin-top:2px;}
   .reminder-btns{display:flex; gap:8px;}
   .rbtn{
@@ -113,7 +145,8 @@
   .rbtn.out.off{background:#fff; color:var(--amber); border:1.5px solid var(--amber-border);}
   .rbtn[disabled]{opacity:.35; cursor:not-allowed;}
 
-  .safety-note{background:var(--red-bg); border:1px solid var(--red-border); color:var(--red); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.5; margin-bottom:12px;}
+  .safety-note{background:var(--red-bg); border:1px solid var(--red-border); color:var(--red); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.5; margin-bottom:12px; display:flex; gap:8px;}
+  .safety-note .ico{font-size:18px; flex-shrink:0;}
   .safety-note strong{display:block; margin-bottom:3px; font-size:13px;}
   .reminder-hint{font-size:12px; color:var(--grey); margin-top:10px; line-height:1.5;}
 
@@ -125,18 +158,55 @@
   .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
   .ghost-btn{background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--grey);}
   .empty{color:var(--grey); font-size:13px; padding:8px 2px;}
-  .banner{background:#eaf1ff; color:var(--blue-dark); border:1px solid #c7dbff; padding:10px 14px; border-radius:12px; font-size:12.5px; line-height:1.5; margin-bottom:14px;}
+  .banner{
+    background:linear-gradient(120deg,#eef2ff,#e3f6fb); color:var(--blue-dark); border:1px solid #c7dbff;
+    padding:12px 14px; border-radius:12px; font-size:12.5px; line-height:1.55; margin-bottom:14px; display:flex; gap:10px;
+  }
+  .banner .ico{font-size:20px; flex-shrink:0;}
+
+  /* ---- toast ---- */
+  #toastContainer{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; width:calc(100% - 28px); max-width:420px; pointer-events:none;}
+  .toast{
+    background:#232437; color:#fff; padding:12px 16px; border-radius:12px; font-size:13.5px; font-weight:600;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); display:flex; align-items:center; gap:10px;
+    opacity:0; transform:translateY(-12px); transition:opacity .25s ease, transform .25s ease; max-width:100%;
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+  .toast .ico{font-size:16px;}
+
+  /* ---- confirm modal ---- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,15,45,.45); z-index:300;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .modal-overlay.show{opacity:1; pointer-events:auto;}
+  @media (min-width:520px){ .modal-overlay{align-items:center;} }
+  .modal-card{
+    background:#fff; border-radius:20px 20px 0 0; padding:22px 20px 24px; width:100%; max-width:440px;
+    transform:translateY(24px); transition:transform .25s ease; box-shadow:0 -8px 30px rgba(0,0,0,.15);
+  }
+  @media (min-width:520px){ .modal-card{border-radius:20px; transform:scale(.96);} }
+  .modal-overlay.show .modal-card{transform:translateY(0);}
+  @media (min-width:520px){ .modal-overlay.show .modal-card{transform:scale(1);} }
+  .modal-icon{font-size:32px; margin-bottom:8px;}
+  .modal-title{font-size:16.5px; font-weight:800; margin-bottom:6px;}
+  .modal-body{font-size:13.5px; color:var(--grey); line-height:1.5; margin-bottom:18px;}
+  .modal-actions{display:flex; gap:10px;}
+  .modal-btn{flex:1; border:none; border-radius:12px; padding:13px; font-size:14.5px; font-weight:700; cursor:pointer;}
+  .modal-btn.cancel{background:var(--grey-bg); color:var(--text);}
+  .modal-btn.confirm{background:var(--red); color:#fff;}
 
   @media (min-width:700px){
     .wrap{padding-top:18px;}
-    .stack.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <h1>Dnata Spur — Checklist Console</h1>
+  <h1>✈️ Dnata Spur Console</h1>
+  <div class="tagline">One tap logs it. See exactly what's done and what's not.</div>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="progress-label"><span>This shift, this device</span><b id="progressLabel">0 / 0 done</b></div>
 </div>
@@ -144,43 +214,45 @@
 <div class="wrap">
 
   <div class="banner">
-    Tap a tile to log it — same instant, one-tap submission as scanning the QR code. This page tracks <b>this device's</b> progress locally; supervisors should keep using the Sheet as the master record.
+    <span class="ico">⚡</span>
+    <span>Tap a tile to log it — same instant, one-tap submission as scanning the QR code. This page tracks <b>this device's</b> progress locally; supervisors should keep using the Sheet as the master record.</span>
   </div>
 
   <div class="card">
-    <h2>Shift details</h2>
+    <h2><span class="icon-badge badge-blue">🛫</span>Shift details</h2>
     <label for="flightInput">Flight / Spur</label>
     <input type="text" id="flightInput" placeholder="e.g. ANA NH212">
   </div>
 
-  <div class="card">
-    <h2>Still to do <span class="count" id="missingCount"></span></h2>
+  <div class="card" id="progressCard">
+    <h2><span class="icon-badge badge-orange">📋</span>Still to do<span class="count" id="missingCount"></span></h2>
     <div id="missingChips"></div>
   </div>
 
   <div class="card">
-    <h2>Supervisor sign-in</h2>
+    <h2><span class="icon-badge badge-purple">🖊️</span>Supervisor sign-in</h2>
     <div id="signinZone"></div>
   </div>
 
   <div class="card">
-    <h2>Checklist events</h2>
+    <h2><span class="icon-badge badge-green">✅</span>Checklist events</h2>
     <div id="checklistZone" class="stack"></div>
   </div>
 
   <div class="card">
-    <h2>VIP bags — choose one</h2>
+    <h2><span class="icon-badge badge-pink">⭐</span>VIP bags — choose one</h2>
     <div id="vipZone" class="vip-row"></div>
   </div>
 
   <div class="card">
-    <h2>BRS scanners &amp; mobile phones</h2>
+    <h2><span class="icon-badge badge-teal">📡</span>BRS scanners &amp; mobile phones</h2>
     <div class="safety-note">
-      <strong>This isn't the real Log In / Log Out.</strong>
+      <span class="ico">🛑</span>
+      <span><strong>This isn't the real Log In / Log Out.</strong>
       That still has to be a physical scan of the QR code stuck to the
       scanner itself — that's what proves it's actually in your hand and
       not left inside a ULD. This section is just a personal reminder so
-      you can see at a glance which scanners you've already dealt with.
+      you can see at a glance which scanners you've already dealt with.</span>
     </div>
     <div class="stack" id="reminderZone"></div>
     <div class="reminder-hint">Tap "In" right after you physically scan a scanner's QR code to check it in, and "Out" once you've physically scanned it back at the end of the shift. These taps don't submit anything anywhere — they only reset locally for a new shift.</div>
@@ -188,12 +260,26 @@
 
   <div class="card">
     <div class="toolbar">
-      <h2 style="margin:0;">Activity log</h2>
-      <button class="ghost-btn" onclick="newShift()">New shift / reset</button>
+      <h2 style="margin:0;"><span class="icon-badge badge-blue">🕒</span>Activity log</h2>
+      <button class="ghost-btn" onclick="newShift()">↻ New shift</button>
     </div>
     <div class="log-list" id="logList"></div>
   </div>
 
+</div>
+
+<div id="toastContainer"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-icon" id="modalIcon">🔄</div>
+    <div class="modal-title" id="modalTitle">Start a new shift?</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="modalCancelBtn">Cancel</button>
+      <button class="modal-btn confirm" id="modalConfirmBtn">Start fresh</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -218,59 +304,59 @@
 
   // ---- Event catalogue — exact wording decoded from your checksheet's QR codes ----
   var EVENTS = [
-    { code:'SIG',  zone:'signin',    once:true,
+    { code:'SIG',  zone:'signin',    once:true,  icon:'🖊️',
       label:'Event 1: Spur Supervisor — Log In',
       text:function(ctx){ return 'Event Log SIG: ' + (ctx.flight||'ANA NH212') + ' - Spur Supervisor: ' + ctx.name; } },
 
-    { code:'UCS',  zone:'checklist', once:true,
+    { code:'UCS',  zone:'checklist', once:true, icon:'📦',
       label:'Event 2: ULD checked serviceable',
       text:function(){ return 'Event Log UCS: ULD checked and confirmed serviceable'; } },
 
-    { code:'CAI',  zone:'checklist', once:true,
+    { code:'CAI',  zone:'checklist', once:true, icon:'📞',
       label:'Event 3: ANA called at beginning of shift',
       text:function(){ return 'Event Log CAI: ANA Airside Incharge called at the beginning of shift'; } },
 
-    { code:'BLF',  zone:'checklist', once:false,
+    { code:'BLF',  zone:'checklist', once:false, icon:'🧳',
       label:'Event 4: Bags left on the floor — logged',
       text:function(){ return 'Event Log BLF: Bags left on the floor logged in BRS'; } },
 
-    { code:'CRS',  zone:'checklist', once:true,
+    { code:'CRS',  zone:'checklist', once:true, icon:'🔍',
       label:'Event 5: Reject scans checked / actioned',
       text:function(){ return 'Event Log CRS: Reject scans in BRS checked and actioned if required'; } },
 
-    { code:'VIP',  zone:'checklist', once:true,
+    { code:'VIP',  zone:'checklist', once:true, icon:'⭐',
       label:'Event 6: VIP bags tagged, cleared and loaded',
       text:function(){ return 'Event Log VIP: VIP bags tagged, cleared and loaded'; } },
 
-    { code:'APB',  zone:'checklist', once:false,
+    { code:'APB',  zone:'checklist', once:false, icon:'⚠️',
       label:'Event 7: ANA called for problem bags',
       text:function(){ return 'Event Log APB: ANA Airside Incharge called for problem bags'; } },
 
-    { code:'RDB',  zone:'checklist', once:false, optional:true,
+    { code:'RDB',  zone:'checklist', once:false, optional:true, icon:'📨',
       label:'Event 8: ANA & dispatcher informed — bags sent',
       text:function(){ return 'Event Log RDB: ANA and Dnata informed when refer to dispatcher bags sent'; } },
 
-    { code:'ACS',  zone:'checklist', once:false,
+    { code:'ACS',  zone:'checklist', once:false, icon:'🔒',
       label:'Event 9: All containers/wessex secured before dispatch',
       text:function(){ return 'Event Log ACS: All containers/wessex secured before dispatching to aircraft'; } },
 
-    { code:'PNB',  zone:'checklist', once:true, optional:true,
+    { code:'PNB',  zone:'checklist', once:true, optional:true, icon:'🔄',
       label:'Event 10: All bags rescanned (non-scanned check)',
       text:function(){ return 'Event Log PNB: All bags rescanned to check possible non scanned bag'; } },
 
-    { code:'LBR',  zone:'checklist', once:false, optional:true,
+    { code:'LBR',  zone:'checklist', once:false, optional:true, icon:'⏰',
       label:'Event 11: ANA informed — late bags received',
       text:function(){ return 'Event Log LBR: ANA informed when late bags received'; } },
 
-    { code:'BMA',  zone:'checklist', once:true,
+    { code:'BMA',  zone:'checklist', once:true, icon:'📱',
       label:'Event 12: All BRS scanners & phones accounted for',
       text:function(){ return 'Event Log BMA: All BRS scanners & mobile phones accounted for'; } },
 
-    { code:'VIPY', zone:'vip', once:true, exclusiveWith:'VIPN',
+    { code:'VIPY', zone:'vip', once:true, exclusiveWith:'VIPN', icon:'✅',
       label:'Event 13: VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPY: VIP Bags loaded as per standard. Operations Informed'; } },
 
-    { code:'VIPN', zone:'vip', once:true, exclusiveWith:'VIPY',
+    { code:'VIPN', zone:'vip', once:true, exclusiveWith:'VIPY', icon:'🚫',
       label:'Event 14: NIL VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPN: NIL VIP Bags loaded. Operations Informed'; } }
   ];
@@ -280,6 +366,7 @@
 
   // ---- Local, per-device, per-shift state ----
   var state = { entries: [], reminders: {} }; // entries: {code,time,label}; reminders: {"400":"in"|"out"|undefined}
+  var justLoggedCode = null;
 
   function todayStr(){
     var d = new Date();
@@ -305,11 +392,54 @@
     localStorage.setItem('spur_flight', document.getElementById('flightInput').value.trim());
   }
 
+  // ---- Toast ----
+  function showToast(message, icon){
+    var container = document.getElementById('toastContainer');
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = '<span class="ico">' + (icon || 'ℹ️') + '</span><span>' + message + '</span>';
+    container.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('show'); });
+    setTimeout(function(){
+      el.classList.remove('show');
+      setTimeout(function(){ el.remove(); }, 250);
+    }, 2600);
+  }
+
+  // ---- Confirm modal ----
+  function showConfirm(opts){
+    document.getElementById('modalIcon').textContent = opts.icon || '❓';
+    document.getElementById('modalTitle').textContent = opts.title || 'Are you sure?';
+    document.getElementById('modalBody').textContent = opts.body || '';
+    var confirmBtn = document.getElementById('modalConfirmBtn');
+    confirmBtn.textContent = opts.confirmLabel || 'Confirm';
+    var overlay = document.getElementById('modalOverlay');
+    overlay.classList.add('show');
+
+    function cleanup(){
+      overlay.classList.remove('show');
+      confirmBtn.onclick = null;
+      document.getElementById('modalCancelBtn').onclick = null;
+      overlay.onclick = null;
+    }
+    confirmBtn.onclick = function(){ cleanup(); if(opts.onConfirm) opts.onConfirm(); };
+    document.getElementById('modalCancelBtn').onclick = function(){ cleanup(); };
+    overlay.onclick = function(e){ if(e.target === overlay) cleanup(); };
+  }
+
   function newShift(){
-    if(!confirm('Start a fresh shift on this device? This clears today\'s local checklist (it does not affect anything already submitted).')) return;
-    state = { entries: [], reminders: {} };
-    persistState();
-    render();
+    showConfirm({
+      icon:'↻',
+      title:'Start a new shift?',
+      body:"This clears today's local checklist on this device. It does not affect anything already submitted to the Sheet.",
+      confirmLabel:'Start fresh',
+      onConfirm:function(){
+        state = { entries: [], reminders: {} };
+        persistState();
+        render();
+        showToast('Fresh shift started on this device', '✨');
+      }
+    });
   }
 
   // ---- Submit exactly like a QR scan: silent GET to the Form's response endpoint ----
@@ -329,6 +459,7 @@
     submitToForm(text).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
     state.entries.push({ code:code, time:nowTime(), label:label });
     persistState();
+    justLoggedCode = code;
     render();
   }
 
@@ -339,10 +470,15 @@
   function logSupervisorSignin(){
     var select = document.getElementById('supervisorSelect');
     var name = select.value;
-    if(!name){ alert('Choose the supervisor signing in first.'); return; }
+    if(!name){
+      showToast('Choose a supervisor from the list first', '👆');
+      select.focus();
+      return;
+    }
     var sigEvt = EVENTS.filter(function(e){ return e.code === 'SIG'; })[0];
     var text = sigEvt.text({ name: name, flight: currentFlight() });
     fire('SIG', sigEvt.label + ' — ' + name, text);
+    showToast(name + ' signed in', '👋');
   }
 
   function setReminder(num, dir){
@@ -361,6 +497,11 @@
     renderReminders();
     renderProgress();
     renderLog();
+    if(justLoggedCode){
+      var el = document.querySelector('[data-code="' + justLoggedCode + '"]');
+      if(el){ el.classList.add('just-logged'); setTimeout(function(){ el.classList.remove('just-logged'); }, 400); }
+      justLoggedCode = null;
+    }
   }
 
   function renderSignin(){
@@ -376,10 +517,10 @@
               TS_NAMES.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<button id="supervisorSignInBtn">Log Sign-In</button>' +
+          '<button id="supervisorSignInBtn">🖊️ Log Sign-In</button>' +
         '</div>' +
         '<div class="signin-status ' + (done ? 'ok' : 'pending') + '">' +
-          (done ? ('✓ Signed in at ' + hits[hits.length-1].time) : 'Not signed in yet') +
+          (done ? ('✅ Signed in at ' + hits[hits.length-1].time) : 'Not signed in yet') +
         '</div>' +
       '</div>';
     document.getElementById('supervisorSignInBtn').onclick = logSupervisorSignin;
@@ -391,6 +532,7 @@
       var hits = entriesFor(evt.code);
       var done = hits.length > 0;
       var btn = document.createElement('button');
+      btn.setAttribute('data-code', evt.code);
 
       var optionalTag = evt.optional ? '<span class="optional-tag">If applicable</span>' : '';
 
@@ -401,7 +543,7 @@
           ? ('Done at ' + hits[hits.length-1].time)
           : (evt.optional ? "Only log this if it happens — otherwise leave it" : 'Not done yet — tap to log');
         btn.innerHTML =
-          '<span class="dot">' + (done ? '✓' : '') + '</span>' +
+          '<span class="dot">' + (done ? '✓' : evt.icon) + '</span>' +
           '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
           '<span class="code-tag">' + evt.code + '</span>';
       } else {
@@ -412,7 +554,7 @@
           ? ('Logged ' + hits.length + '× so far — last ' + hits[hits.length-1].time + ' — tap again if it happens again')
           : (evt.optional ? 'Only tap this if the situation actually comes up' : 'Can happen more than once — tap every time it does');
         btn.innerHTML =
-          '<span class="dot">' + (done ? hits.length : '') + '</span>' +
+          '<span class="dot">' + (done ? hits.length : evt.icon) + '</span>' +
           '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
           '<span class="code-tag">' + evt.code + '</span>';
       }
@@ -428,9 +570,10 @@
       var hits = entriesFor(evt.code);
       var done = hits.length > 0;
       var btn = document.createElement('button');
+      btn.setAttribute('data-code', evt.code);
       btn.className = 'evt ' + (done ? 'done' : 'pending');
       var statusText = done ? ('✓ ' + hits[hits.length-1].time) : 'Tap to log';
-      btn.innerHTML = '<span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+      btn.innerHTML = '<span class="dot">' + evt.icon + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
       btn.onclick = function(){ logChecklistEvent(evt); };
       container.appendChild(btn);
     });
@@ -444,7 +587,7 @@
       var row = document.createElement('div');
       row.className = 'reminder';
       row.innerHTML =
-        '<div><div class="num">Scanner ' + num + '</div>' +
+        '<div><div class="num">📡 Scanner ' + num + '</div>' +
         '<div class="sub">' + (dir === 'in' ? 'Marked logged in' : dir === 'out' ? 'Marked logged out' : 'Not marked yet') + '</div></div>' +
         '<div class="reminder-btns">' +
           '<button class="rbtn in ' + (dir === 'in' ? '' : 'off') + '" data-act="in">In</button>' +
@@ -470,9 +613,21 @@
 
     var missing = checklist.filter(function(e){ return entriesFor(e.code).length === 0; }).map(function(e){ return e.code; });
     if(!vipDone) missing.push('VIP Y/N');
-    document.getElementById('missingCount').textContent = missing.length ? (missing.length + ' left') : '';
-    var chipHtml = missing.map(function(c){ return '<span class="missing-chip">' + c + '</span>'; }).join('');
-    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="all-done-chip">All required items logged ✓</span>';
+
+    var countEl = document.getElementById('missingCount');
+    var chipsEl = document.getElementById('missingChips');
+    if(missing.length === 0){
+      countEl.textContent = '';
+      chipsEl.innerHTML =
+        '<div class="celebrate">' +
+          '<span class="emoji">🎉</span>' +
+          '<div class="msg">All required items logged!</div>' +
+          '<div class="sub">Nice work — just double check any "if applicable" items and scanners.</div>' +
+        '</div>';
+    } else {
+      countEl.textContent = missing.length + ' left';
+      chipsEl.innerHTML = missing.map(function(c){ return '<span class="missing-chip">' + c + '</span>'; }).join('');
+    }
   }
 
   function renderLog(){
