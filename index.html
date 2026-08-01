@@ -2,138 +2,185 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dnata Spur — Checklist Console</title>
 <style>
   :root{
-    --green:#1e8e3e; --green-bg:#e6f4ea;
-    --amber:#b06000; --amber-bg:#fef3e0;
-    --grey:#5f6368; --grey-bg:#f1f3f4;
-    --blue:#1a73e8; --border:#dadce0; --text:#202124;
+    --green:#1e8e3e; --green-bg:#e8f6ec; --green-border:#a8dab6;
+    --amber:#a15c00; --amber-bg:#fff4e0; --amber-border:#f3c979;
+    --grey:#5f6368; --grey-bg:#f4f5f6; --border:#e1e3e6; --text:#1b1c1d;
+    --blue:#1a56db; --blue-dark:#1442ab;
+    --red:#b3261e; --red-bg:#fdeceb; --red-border:#f3b3ae;
+    --radius:14px;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    background:#f5f6f7; color:var(--text); margin:0; padding:16px 12px 60px;
+    background:#f0f1f3; color:var(--text); margin:0; padding:0 0 48px;
+    -webkit-font-smoothing:antialiased;
   }
-  h1{font-size:20px; margin:0 0 2px;}
-  .sub{color:var(--grey); font-size:13px; margin-bottom:16px;}
-  .card{background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;}
-  .card h2{font-size:14px; margin:0 0 10px; color:var(--grey); text-transform:uppercase; letter-spacing:.04em;}
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-  label{font-size:12px; color:var(--grey); display:block; margin-bottom:3px;}
-  input[type=text]{font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; width:100%;}
-  .field{flex:1; min-width:140px;}
-  .progress-wrap{background:var(--grey-bg); border-radius:8px; height:10px; overflow:hidden; margin:8px 0;}
-  .progress-bar{background:var(--green); height:100%; width:0%; transition:width .3s;}
-  .progress-label{font-size:13px; color:var(--grey);}
-  .missing-chip{display:inline-block; background:var(--amber-bg); color:var(--amber); border-radius:14px; padding:3px 10px; font-size:12px; margin:3px 4px 0 0;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:10px;}
-  .evt{border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--grey-bg); cursor:pointer; text-align:left; font-family:inherit; display:flex; flex-direction:column; gap:4px; min-height:76px;}
-  .evt:active{transform:scale(0.98);}
-  .evt .code{font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--grey);}
-  .evt .label{font-size:13.5px; line-height:1.3;}
-  .evt .status{font-size:11.5px; margin-top:auto;}
-  .evt.done{background:var(--green-bg); border-color:var(--green);}
+  .topbar{
+    position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--border);
+    padding:14px 16px 12px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .topbar h1{font-size:18px; margin:0 0 8px; font-weight:700;}
+  .progress-wrap{background:var(--grey-bg); border-radius:20px; height:14px; overflow:hidden;}
+  .progress-bar{background:linear-gradient(90deg,#34a853,#1e8e3e); height:100%; width:0%; transition:width .35s ease; border-radius:20px;}
+  .progress-label{font-size:13px; color:var(--grey); margin-top:6px; display:flex; justify-content:space-between;}
+  .progress-label b{color:var(--text);}
+
+  .wrap{padding:14px 14px 8px; max-width:640px; margin:0 auto;}
+  .card{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .card h2{font-size:12.5px; margin:0 0 12px; color:var(--grey); text-transform:uppercase; letter-spacing:.06em; font-weight:700;}
+  .card h2 .count{float:right; text-transform:none; letter-spacing:0; font-weight:600; color:var(--text);}
+
+  label{font-size:13px; color:var(--grey); display:block; margin-bottom:6px; font-weight:600;}
+  input[type=text], select{
+    font-size:16px; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px; width:100%;
+    background:#fff; color:var(--text); appearance:none;
+  }
+  input[type=text]:focus, select:focus{outline:none; border-color:var(--blue);}
+
+  .missing-chip{display:inline-block; background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-border); border-radius:20px; padding:5px 12px; font-size:12.5px; margin:0 6px 6px 0; font-weight:600;}
+  .all-done-chip{display:inline-block; background:var(--green-bg); color:var(--green); border:1px solid var(--green-border); border-radius:20px; padding:5px 12px; font-size:12.5px; font-weight:600;}
+
+  .stack{display:flex; flex-direction:column; gap:10px;}
+  .evt{
+    border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; background:var(--grey-bg);
+    cursor:pointer; text-align:left; font-family:inherit; width:100%;
+    display:flex; align-items:center; gap:12px; min-height:56px;
+    transition:background .15s, border-color .15s, transform .08s;
+  }
+  .evt:active{transform:scale(0.985);}
+  .evt .dot{
+    width:22px; height:22px; border-radius:50%; flex-shrink:0; border:2px solid var(--border); background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff;
+  }
+  .evt.done .dot{background:var(--green); border-color:var(--green);}
+  .evt-text{flex:1; min-width:0;}
+  .evt .label{font-size:14.5px; line-height:1.35; font-weight:600;}
+  .evt .status{font-size:12px; margin-top:2px; color:var(--grey);}
+  .evt.done{background:var(--green-bg); border-color:var(--green-border);}
   .evt.done .status{color:var(--green); font-weight:600;}
-  .evt.pending .status{color:var(--amber); font-weight:600;}
-  .evt.sending{opacity:.6;}
+  .evt.pending .status{color:var(--amber);}
+  .evt .code-tag{font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--grey); background:#fff; border:1px solid var(--border); border-radius:6px; padding:2px 6px; flex-shrink:0;}
+  .evt.done .code-tag{background:#fff; border-color:var(--green-border); color:var(--green);}
+
   .vip-row{display:flex; gap:10px;}
-  .vip-row .evt{flex:1; text-align:center; align-items:center; min-height:60px;}
-  .scanner-block{display:flex; gap:10px; flex-wrap:wrap;}
-  .scanner-card{border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; min-width:150px; background:var(--grey-bg);}
-  .scanner-card .num{font-weight:700; font-size:14px; margin-bottom:6px;}
-  .scanner-card .status{font-size:11.5px; margin-bottom:8px; color:var(--grey);}
-  .scanner-card.in{background:var(--green-bg); border-color:var(--green);}
-  .scanner-card.in .status{color:var(--green); font-weight:600;}
-  .btn{border:none; border-radius:7px; padding:7px 10px; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:6px;}
-  .btn.in{background:var(--green); color:#fff;}
-  .btn.out{background:#fff; color:var(--text); border:1px solid var(--border);}
-  .btn[disabled]{opacity:.4; cursor:not-allowed;}
-  .add-scanner{display:flex; gap:8px; margin-top:10px; max-width:260px;}
-  .add-scanner input{flex:1;}
-  .add-scanner button{padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer;}
-  .log-list{max-height:260px; overflow-y:auto; font-size:12.5px;}
-  .log-row{display:flex; gap:8px; padding:6px 2px; border-bottom:1px solid #eee;}
-  .log-time{color:var(--grey); width:56px; flex-shrink:0;}
+  .vip-row .evt{flex:1; flex-direction:column; text-align:center; align-items:center; min-height:78px; justify-content:center;}
+  .vip-row .evt .label{font-size:13.5px;}
+
+  .signin-form{border:1.5px solid var(--border); border-radius:12px; padding:14px; background:var(--grey-bg);}
+  .signin-form.done{background:var(--green-bg); border-color:var(--green-border);}
+  .signin-row{display:flex; flex-direction:column; gap:10px;}
+  .signin-row button{
+    background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px 14px;
+    font-size:15px; font-weight:700; cursor:pointer;
+  }
+  .signin-row button:active{background:var(--blue-dark);}
+  .signin-status{font-size:12.5px; margin-top:10px; font-weight:600;}
+  .signin-status.ok{color:var(--green);}
+  .signin-status.pending{color:var(--amber);}
+
+  .reminder{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--grey-bg);
+  }
+  .reminder .num{font-weight:700; font-size:14.5px;}
+  .reminder .sub{font-size:11.5px; color:var(--grey); margin-top:2px;}
+  .reminder-btns{display:flex; gap:8px;}
+  .rbtn{
+    border:none; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
+    min-width:64px;
+  }
+  .rbtn.in{background:var(--green); color:#fff;}
+  .rbtn.in.off{background:#fff; color:var(--green); border:1.5px solid var(--green-border);}
+  .rbtn.out{background:var(--amber); color:#fff;}
+  .rbtn.out.off{background:#fff; color:var(--amber); border:1.5px solid var(--amber-border);}
+  .rbtn[disabled]{opacity:.35; cursor:not-allowed;}
+
+  .safety-note{background:var(--red-bg); border:1px solid var(--red-border); color:var(--red); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.5; margin-bottom:12px;}
+  .safety-note strong{display:block; margin-bottom:3px; font-size:13px;}
+  .reminder-hint{font-size:12px; color:var(--grey); margin-top:10px; line-height:1.5;}
+
+  .log-list{max-height:240px; overflow-y:auto; font-size:13px;}
+  .log-row{display:flex; gap:10px; padding:8px 2px; border-bottom:1px solid #f0f0f0;}
+  .log-row:last-child{border-bottom:none;}
+  .log-time{color:var(--grey); width:48px; flex-shrink:0; font-variant-numeric:tabular-nums;}
   .log-desc{flex:1;}
-  .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
-  .ghost-btn{background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer;}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
+  .ghost-btn{background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--grey);}
   .empty{color:var(--grey); font-size:13px; padding:8px 2px;}
-  .banner{background:var(--amber-bg); color:var(--amber); padding:8px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
-  select{font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; width:100%; background:#fff;}
-  .signin-form{border:1.5px solid var(--border); border-radius:10px; padding:12px; background:var(--grey-bg);}
-  .signin-form.done{background:var(--green-bg); border-color:var(--green);}
-  .signin-form .status{font-size:12px; margin-top:8px;}
-  .signin-form .status.ok{color:var(--green); font-weight:600;}
-  .signin-form .status.pending{color:var(--amber); font-weight:600;}
-  .signin-row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
-  .signin-row .field{flex:2; min-width:180px;}
-  .signin-row button{flex:1; min-width:120px; background:var(--blue); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-size:13.5px; font-weight:600; cursor:pointer;}
-  .safety-note{background:#fce8e6; border:1px solid #d93025; color:#b3261e; border-radius:10px; padding:12px; font-size:13px; line-height:1.5;}
-  .safety-note strong{display:block; margin-bottom:4px; font-size:13.5px;}
+  .banner{background:#eaf1ff; color:var(--blue-dark); border:1px solid #c7dbff; padding:10px 14px; border-radius:12px; font-size:12.5px; line-height:1.5; margin-bottom:14px;}
+
+  @media (min-width:700px){
+    .wrap{padding-top:18px;}
+    .stack.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  }
 </style>
 </head>
 <body>
 
-<h1>Dnata Spur — Checklist Console</h1>
-<div class="sub">Tap an event to log it — same one-tap submission as scanning the QR code today. No confirmation screen, nothing else to press.</div>
-
-<div class="banner">
-  This page tracks <strong>this device's</strong> progress for the shift. It doesn't read the shared Sheet — supervisors should keep using the Sheet itself as the master record. If you switch devices mid-shift, tap "New shift" to start fresh rather than mixing two histories.
-</div>
-
-<div class="card">
-  <h2>Shift details</h2>
-  <div class="row">
-    <div class="field">
-      <label for="flightInput">Flight / Spur</label>
-      <input type="text" id="flightInput" placeholder="e.g. ANA NH212">
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Progress</h2>
+<div class="topbar">
+  <h1>Dnata Spur — Checklist Console</h1>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
-  <div class="progress-label" id="progressLabel">0 / 0 checklist items done</div>
-  <div id="missingChips"></div>
+  <div class="progress-label"><span>This shift, this device</span><b id="progressLabel">0 / 0 done</b></div>
 </div>
 
-<div class="card">
-  <h2>Supervisor sign-in</h2>
-  <div id="signinZone"></div>
-</div>
+<div class="wrap">
 
-<div class="card">
-  <h2>Checklist events</h2>
-  <div id="checklistZone" class="grid"></div>
-</div>
-
-<div class="card">
-  <h2>VIP bags (choose one)</h2>
-  <div id="vipZone" class="vip-row"></div>
-</div>
-
-<div class="card">
-  <h2>BRS scanners &amp; mobile phones</h2>
-  <div class="safety-note">
-    <strong>Scanner Log In / Log Out is intentionally not a button here.</strong>
-    It must be done by physically scanning the QR code stuck to each scanner
-    (400, 401, 402) when you pick it up and again when you return it. That
-    physical scan is what proves the scanner is actually in your hand — not
-    left inside a ULD or container. A console button could be tapped without
-    ever touching the scanner, which would defeat the safety check, so this
-    step stays exactly as it is today.
+  <div class="banner">
+    Tap a tile to log it — same instant, one-tap submission as scanning the QR code. This page tracks <b>this device's</b> progress locally; supervisors should keep using the Sheet as the master record.
   </div>
-</div>
 
-<div class="card">
-  <div class="toolbar" style="margin-bottom:8px;">
-    <h2 style="margin:0;">Activity log (this shift, this device)</h2>
-    <button class="ghost-btn" onclick="newShift()">New shift / reset</button>
+  <div class="card">
+    <h2>Shift details</h2>
+    <label for="flightInput">Flight / Spur</label>
+    <input type="text" id="flightInput" placeholder="e.g. ANA NH212">
   </div>
-  <div class="log-list" id="logList"></div>
+
+  <div class="card">
+    <h2>Still to do <span class="count" id="missingCount"></span></h2>
+    <div id="missingChips"></div>
+  </div>
+
+  <div class="card">
+    <h2>Supervisor sign-in</h2>
+    <div id="signinZone"></div>
+  </div>
+
+  <div class="card">
+    <h2>Checklist events</h2>
+    <div id="checklistZone" class="stack"></div>
+  </div>
+
+  <div class="card">
+    <h2>VIP bags — choose one</h2>
+    <div id="vipZone" class="vip-row"></div>
+  </div>
+
+  <div class="card">
+    <h2>BRS scanners &amp; mobile phones</h2>
+    <div class="safety-note">
+      <strong>This isn't the real Log In / Log Out.</strong>
+      That still has to be a physical scan of the QR code stuck to the
+      scanner itself — that's what proves it's actually in your hand and
+      not left inside a ULD. This section is just a personal reminder so
+      you can see at a glance which scanners you've already dealt with.
+    </div>
+    <div class="stack" id="reminderZone"></div>
+    <div class="reminder-hint">Tap "In" right after you physically scan a scanner's QR code to check it in, and "Out" once you've physically scanned it back at the end of the shift. These taps don't submit anything anywhere — they only reset locally for a new shift.</div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;">Activity log</h2>
+      <button class="ghost-btn" onclick="newShift()">New shift / reset</button>
+    </div>
+    <div class="log-list" id="logList"></div>
+  </div>
+
 </div>
 
 <script>
@@ -142,11 +189,10 @@
   var FORM_FIELD  = 'entry.724181957';
 
   // ---- TS names — cross-checked against the actual "Spur Supervisors 1 & 2" QR
-  // sheets (28 names had real QR codes; 3 of those weren't on the typed list you
-  // gave me — Joe Karavias, Monit Chunilal, Mohammad Yousebzaie — added here since
-  // they also show up as supervisors in your Sheet history. Danny Saunders was on
-  // your typed list but has no QR code in either PDF; kept here anyway since this
-  // console builds the submission text itself rather than needing a scanned QR. ----
+  // sheets. Joe Karavias, Monit Chunilal, Mohammad Yousebzaie were found on the QR
+  // sheets but not your typed list, so they're included. Danny Saunders was on your
+  // typed list but has no QR code in either PDF; kept anyway since this console
+  // builds the submission text itself rather than needing a scanned QR. ----
   var TS_NAMES = [
     'Artur Adam','Shreeram Adhikari','Adam Brummitt-Brown','Vichal Canacsing',
     'Daljit Chawla','Po Wah Cheng','Monit Chunilal','Paul Collacott',
@@ -158,11 +204,8 @@
   ];
 
   // ---- Event catalogue — exact wording decoded from your checksheet's QR codes ----
-  // SIG and the scanner in/out lines aren't on this checksheet (they live on a separate
-  // "TS name" / scanner QR sheet), so their wording below is inferred from your Sheet's
-  // existing log text. Tell me if it needs correcting and I'll fix it.
   var EVENTS = [
-    { code:'SIG',  zone:'signin',    once:true,  needsName:true,
+    { code:'SIG',  zone:'signin',    once:true,
       label:'Event 1: Spur Supervisor — Log In',
       text:function(ctx){ return 'Event Log SIG: ' + (ctx.flight||'ANA NH212') + ' - Spur Supervisor: ' + ctx.name; } },
 
@@ -211,16 +254,19 @@
       text:function(){ return 'Event Log BMA: All BRS scanners & mobile phones accounted for'; } },
 
     { code:'VIPY', zone:'vip', once:true, exclusiveWith:'VIPN',
-      label:'Event 13: VIP Bags Loaded — Ops Informed',
+      label:'Event 13: VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPY: VIP Bags loaded as per standard. Operations Informed'; } },
 
     { code:'VIPN', zone:'vip', once:true, exclusiveWith:'VIPY',
-      label:'Event 14: NIL VIP Bags Loaded — Ops Informed',
+      label:'Event 14: NIL VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPN: NIL VIP Bags loaded. Operations Informed'; } }
   ];
 
+  // ---- Scanner reminders — local only, never submitted anywhere ----
+  var SCANNERS = ['400', '401', '402'];
+
   // ---- Local, per-device, per-shift state ----
-  var state = { entries: [] }; // { code, time, label, handler }
+  var state = { entries: [], reminders: {} }; // entries: {code,time,label}; reminders: {"400":"in"|"out"|undefined}
 
   function todayStr(){
     var d = new Date();
@@ -230,9 +276,10 @@
   function load(){
     var savedDate = localStorage.getItem('spur_shift_date');
     if(savedDate === todayStr()){
-      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
+      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[],"reminders":{}}');
+      if(!state.reminders) state.reminders = {};
     } else {
-      state = { entries: [] };
+      state = { entries: [], reminders: {} };
       persistState();
     }
     document.getElementById('flightInput').value = localStorage.getItem('spur_flight') || 'ANA NH212';
@@ -247,7 +294,7 @@
 
   function newShift(){
     if(!confirm('Start a fresh shift on this device? This clears today\'s local checklist (it does not affect anything already submitted).')) return;
-    state = { entries: [] };
+    state = { entries: [], reminders: {} };
     persistState();
     render();
   }
@@ -259,13 +306,15 @@
   }
 
   function currentFlight(){ return document.getElementById('flightInput').value.trim(); }
+  function nowTime(){
+    var now = new Date();
+    return ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+  }
 
   function fire(code, label, text){
     persistFields();
-    var now = new Date();
-    var timeStr = ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
     submitToForm(text).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
-    state.entries.push({ code:code, time:timeStr, label:label });
+    state.entries.push({ code:code, time:nowTime(), label:label });
     persistState();
     render();
   }
@@ -283,6 +332,12 @@
     fire('SIG', sigEvt.label + ' — ' + name, text);
   }
 
+  function setReminder(num, dir){
+    state.reminders[num] = dir;
+    persistState();
+    render();
+  }
+
   // ---- Rendering ----
   function entriesFor(code){ return state.entries.filter(function(e){ return e.code === code; }); }
 
@@ -290,6 +345,7 @@
     renderSignin();
     renderZone('checklist', document.getElementById('checklistZone'));
     renderVip();
+    renderReminders();
     renderProgress();
     renderLog();
   }
@@ -301,7 +357,7 @@
     container.innerHTML =
       '<div class="signin-form ' + (done ? 'done' : '') + '">' +
         '<div class="signin-row">' +
-          '<div class="field">' +
+          '<div>' +
             '<label for="supervisorSelect">Supervisor signing in</label>' +
             '<select id="supervisorSelect"><option value="">Select name…</option>' +
               TS_NAMES.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('') +
@@ -309,8 +365,8 @@
           '</div>' +
           '<button id="supervisorSignInBtn">Log Sign-In</button>' +
         '</div>' +
-        '<div class="status ' + (done ? 'ok' : 'pending') + '">' +
-          (done ? ('✓ Signed in ' + hits[hits.length-1].time) : 'Not signed in yet') +
+        '<div class="signin-status ' + (done ? 'ok' : 'pending') + '">' +
+          (done ? ('✓ Signed in at ' + hits[hits.length-1].time) : 'Not signed in yet') +
         '</div>' +
       '</div>';
     document.getElementById('supervisorSignInBtn').onclick = logSupervisorSignin;
@@ -324,9 +380,12 @@
       var btn = document.createElement('button');
       btn.className = 'evt ' + (done ? 'done' : 'pending');
       var statusText = done
-        ? (evt.once ? ('✓ Done ' + hits[hits.length-1].time) : ('✓ Logged ' + hits.length + '× — last ' + hits[hits.length-1].time))
+        ? (evt.once ? ('Done at ' + hits[hits.length-1].time) : ('Logged ' + hits.length + '× — last ' + hits[hits.length-1].time))
         : 'Not done yet — tap to log';
-      btn.innerHTML = '<span class="code">' + evt.code + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+      btn.innerHTML =
+        '<span class="dot">' + (done ? '✓' : '') + '</span>' +
+        '<span class="evt-text"><span class="label">' + evt.label + '</span><br><span class="status">' + statusText + '</span></span>' +
+        '<span class="code-tag">' + evt.code + '</span>';
       btn.onclick = function(){ logChecklistEvent(evt); };
       container.appendChild(btn);
     });
@@ -340,10 +399,30 @@
       var done = hits.length > 0;
       var btn = document.createElement('button');
       btn.className = 'evt ' + (done ? 'done' : 'pending');
-      var statusText = done ? ('✓ Done ' + hits[hits.length-1].time) : 'Tap to log';
-      btn.innerHTML = '<span class="code">' + evt.code + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+      var statusText = done ? ('✓ ' + hits[hits.length-1].time) : 'Tap to log';
+      btn.innerHTML = '<span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
       btn.onclick = function(){ logChecklistEvent(evt); };
       container.appendChild(btn);
+    });
+  }
+
+  function renderReminders(){
+    var container = document.getElementById('reminderZone');
+    container.innerHTML = '';
+    SCANNERS.forEach(function(num){
+      var dir = state.reminders[num];
+      var row = document.createElement('div');
+      row.className = 'reminder';
+      row.innerHTML =
+        '<div><div class="num">Scanner ' + num + '</div>' +
+        '<div class="sub">' + (dir === 'in' ? 'Marked logged in' : dir === 'out' ? 'Marked logged out' : 'Not marked yet') + '</div></div>' +
+        '<div class="reminder-btns">' +
+          '<button class="rbtn in ' + (dir === 'in' ? '' : 'off') + '" data-act="in">In</button>' +
+          '<button class="rbtn out ' + (dir === 'out' ? '' : 'off') + '" data-act="out">Out</button>' +
+        '</div>';
+      row.querySelector('[data-act="in"]').onclick = function(){ setReminder(num, 'in'); };
+      row.querySelector('[data-act="out"]').onclick = function(){ setReminder(num, 'out'); };
+      container.appendChild(row);
     });
   }
 
@@ -355,12 +434,13 @@
     var completed = done.length + (vipDone ? 1 : 0);
     var pct = total ? Math.round((completed/total)*100) : 0;
     document.getElementById('progressBar').style.width = pct + '%';
-    document.getElementById('progressLabel').textContent = completed + ' / ' + total + ' checklist items done';
+    document.getElementById('progressLabel').textContent = completed + ' / ' + total + ' done';
 
     var missing = checklist.filter(function(e){ return entriesFor(e.code).length === 0; }).map(function(e){ return e.code; });
     if(!vipDone) missing.push('VIP Y/N');
-    var chipHtml = missing.map(function(c){ return '<span class="missing-chip">Missing: ' + c + '</span>'; }).join('');
-    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="missing-chip" style="background:#e6f4ea;color:#1e8e3e;">All items logged ✓</span>';
+    document.getElementById('missingCount').textContent = missing.length ? (missing.length + ' left') : '';
+    var chipHtml = missing.map(function(c){ return '<span class="missing-chip">' + c + '</span>'; }).join('');
+    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="all-done-chip">All items logged ✓</span>';
   }
 
   function renderLog(){
