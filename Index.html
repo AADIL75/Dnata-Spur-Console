@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dnata Spur — Checklist Console</title>
+<style>
+  :root{
+    --green:#1e8e3e; --green-bg:#e6f4ea;
+    --amber:#b06000; --amber-bg:#fef3e0;
+    --grey:#5f6368; --grey-bg:#f1f3f4;
+    --blue:#1a73e8; --border:#dadce0; --text:#202124;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:#f5f6f7; color:var(--text); margin:0; padding:16px 12px 60px;
+  }
+  h1{font-size:20px; margin:0 0 2px;}
+  .sub{color:var(--grey); font-size:13px; margin-bottom:16px;}
+  .card{background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;}
+  .card h2{font-size:14px; margin:0 0 10px; color:var(--grey); text-transform:uppercase; letter-spacing:.04em;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  label{font-size:12px; color:var(--grey); display:block; margin-bottom:3px;}
+  input[type=text]{font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; width:100%;}
+  .field{flex:1; min-width:140px;}
+  .progress-wrap{background:var(--grey-bg); border-radius:8px; height:10px; overflow:hidden; margin:8px 0;}
+  .progress-bar{background:var(--green); height:100%; width:0%; transition:width .3s;}
+  .progress-label{font-size:13px; color:var(--grey);}
+  .missing-chip{display:inline-block; background:var(--amber-bg); color:var(--amber); border-radius:14px; padding:3px 10px; font-size:12px; margin:3px 4px 0 0;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:10px;}
+  .evt{border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--grey-bg); cursor:pointer; text-align:left; font-family:inherit; display:flex; flex-direction:column; gap:4px; min-height:76px;}
+  .evt:active{transform:scale(0.98);}
+  .evt .code{font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--grey);}
+  .evt .label{font-size:13.5px; line-height:1.3;}
+  .evt .status{font-size:11.5px; margin-top:auto;}
+  .evt.done{background:var(--green-bg); border-color:var(--green);}
+  .evt.done .status{color:var(--green); font-weight:600;}
+  .evt.pending .status{color:var(--amber); font-weight:600;}
+  .evt.sending{opacity:.6;}
+  .vip-row{display:flex; gap:10px;}
+  .vip-row .evt{flex:1; text-align:center; align-items:center; min-height:60px;}
+  .scanner-block{display:flex; gap:10px; flex-wrap:wrap;}
+  .scanner-card{border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; min-width:150px; background:var(--grey-bg);}
+  .scanner-card .num{font-weight:700; font-size:14px; margin-bottom:6px;}
+  .scanner-card .status{font-size:11.5px; margin-bottom:8px; color:var(--grey);}
+  .scanner-card.in{background:var(--green-bg); border-color:var(--green);}
+  .scanner-card.in .status{color:var(--green); font-weight:600;}
+  .btn{border:none; border-radius:7px; padding:7px 10px; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:6px;}
+  .btn.in{background:var(--green); color:#fff;}
+  .btn.out{background:#fff; color:var(--text); border:1px solid var(--border);}
+  .btn[disabled]{opacity:.4; cursor:not-allowed;}
+  .add-scanner{display:flex; gap:8px; margin-top:10px; max-width:260px;}
+  .add-scanner input{flex:1;}
+  .add-scanner button{padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer;}
+  .log-list{max-height:260px; overflow-y:auto; font-size:12.5px;}
+  .log-row{display:flex; gap:8px; padding:6px 2px; border-bottom:1px solid #eee;}
+  .log-time{color:var(--grey); width:56px; flex-shrink:0;}
+  .log-desc{flex:1;}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  .ghost-btn{background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer;}
+  .empty{color:var(--grey); font-size:13px; padding:8px 2px;}
+  .banner{background:var(--amber-bg); color:var(--amber); padding:8px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
+  select{font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; width:100%; background:#fff;}
+  .signin-form{border:1.5px solid var(--border); border-radius:10px; padding:12px; background:var(--grey-bg);}
+  .signin-form.done{background:var(--green-bg); border-color:var(--green);}
+  .signin-form .status{font-size:12px; margin-top:8px;}
+  .signin-form .status.ok{color:var(--green); font-weight:600;}
+  .signin-form .status.pending{color:var(--amber); font-weight:600;}
+  .signin-row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
+  .signin-row .field{flex:2; min-width:180px;}
+  .signin-row button{flex:1; min-width:120px; background:var(--blue); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-size:13.5px; font-weight:600; cursor:pointer;}
+  .safety-note{background:#fce8e6; border:1px solid #d93025; color:#b3261e; border-radius:10px; padding:12px; font-size:13px; line-height:1.5;}
+  .safety-note strong{display:block; margin-bottom:4px; font-size:13.5px;}
+</style>
+</head>
+<body>
+
+<h1>Dnata Spur — Checklist Console</h1>
+<div class="sub">Tap an event to log it — same one-tap submission as scanning the QR code today. No confirmation screen, nothing else to press.</div>
+
+<div class="banner">
+  This page tracks <strong>this device's</strong> progress for the shift. It doesn't read the shared Sheet — supervisors should keep using the Sheet itself as the master record. If you switch devices mid-shift, tap "New shift" to start fresh rather than mixing two histories.
+</div>
+
+<div class="card">
+  <h2>Shift details</h2>
+  <div class="row">
+    <div class="field">
+      <label for="flightInput">Flight / Spur</label>
+      <input type="text" id="flightInput" placeholder="e.g. ANA NH212">
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Progress</h2>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="progress-label" id="progressLabel">0 / 0 checklist items done</div>
+  <div id="missingChips"></div>
+</div>
+
+<div class="card">
+  <h2>Supervisor sign-in</h2>
+  <div id="signinZone"></div>
+</div>
+
+<div class="card">
+  <h2>Checklist events</h2>
+  <div id="checklistZone" class="grid"></div>
+</div>
+
+<div class="card">
+  <h2>VIP bags (choose one)</h2>
+  <div id="vipZone" class="vip-row"></div>
+</div>
+
+<div class="card">
+  <h2>BRS scanners &amp; mobile phones</h2>
+  <div class="safety-note">
+    <strong>Scanner Log In / Log Out is intentionally not a button here.</strong>
+    It must be done by physically scanning the QR code stuck to each scanner
+    (400, 401, 402) when you pick it up and again when you return it. That
+    physical scan is what proves the scanner is actually in your hand — not
+    left inside a ULD or container. A console button could be tapped without
+    ever touching the scanner, which would defeat the safety check, so this
+    step stays exactly as it is today.
+  </div>
+</div>
+
+<div class="card">
+  <div class="toolbar" style="margin-bottom:8px;">
+    <h2 style="margin:0;">Activity log (this shift, this device)</h2>
+    <button class="ghost-btn" onclick="newShift()">New shift / reset</button>
+  </div>
+  <div class="log-list" id="logList"></div>
+</div>
+
+<script>
+  // ---- Google Form this console submits to (decoded from your printed QR codes) ----
+  var FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSdn0IWumBH5a-OJ519QycvCNawb6NvdObF_kUsKNvla_nctgQ/formResponse';
+  var FORM_FIELD  = 'entry.724181957';
+
+  // ---- TS names — cross-checked against the actual "Spur Supervisors 1 & 2" QR
+  // sheets (28 names had real QR codes; 3 of those weren't on the typed list you
+  // gave me — Joe Karavias, Monit Chunilal, Mohammad Yousebzaie — added here since
+  // they also show up as supervisors in your Sheet history. Danny Saunders was on
+  // your typed list but has no QR code in either PDF; kept here anyway since this
+  // console builds the submission text itself rather than needing a scanned QR. ----
+  var TS_NAMES = [
+    'Artur Adam','Shreeram Adhikari','Adam Brummitt-Brown','Vichal Canacsing',
+    'Daljit Chawla','Po Wah Cheng','Monit Chunilal','Paul Collacott',
+    'Ricardo DA Silva Mendes Rodrigues','Engin Ercan','Prem Gurung','Jasvinder Judge',
+    'Kunal Kadiya','Joe Karavias','Jatinder Kumar','Emil Martirosyan',
+    'Kathiaravelu Mathialagan','Daniel Mihai','Syed Naqvi','Russell Pammenter',
+    'Ryland Pommels','Ademola Robinson','David Robinson','Danny Saunders',
+    'Vijay Sharma','Jasdeep Virak','Gary Williams','Robert Wood','Mohammad Yousebzaie'
+  ];
+
+  // ---- Event catalogue — exact wording decoded from your checksheet's QR codes ----
+  // SIG and the scanner in/out lines aren't on this checksheet (they live on a separate
+  // "TS name" / scanner QR sheet), so their wording below is inferred from your Sheet's
+  // existing log text. Tell me if it needs correcting and I'll fix it.
+  var EVENTS = [
+    { code:'SIG',  zone:'signin',    once:true,  needsName:true,
+      label:'Event 1: Spur Supervisor — Log In',
+      text:function(ctx){ return 'Event Log SIG: ' + (ctx.flight||'ANA NH212') + ' - Spur Supervisor: ' + ctx.name; } },
+
+    { code:'UCS',  zone:'checklist', once:true,
+      label:'Event 2: ULD checked serviceable',
+      text:function(){ return 'Event Log UCS: ULD checked and confirmed serviceable'; } },
+
+    { code:'CAI',  zone:'checklist', once:true,
+      label:'Event 3: ANA called at beginning of shift',
+      text:function(){ return 'Event Log CAI: ANA Airside Incharge called at the beginning of shift'; } },
+
+    { code:'BLF',  zone:'checklist', once:false,
+      label:'Event 4: Bags left on the floor — logged',
+      text:function(){ return 'Event Log BLF: Bags left on the floor logged in BRS'; } },
+
+    { code:'CRS',  zone:'checklist', once:true,
+      label:'Event 5: Reject scans checked / actioned',
+      text:function(){ return 'Event Log CRS: Reject scans in BRS checked and actioned if required'; } },
+
+    { code:'VIP',  zone:'checklist', once:true,
+      label:'Event 6: VIP bags tagged, cleared and loaded',
+      text:function(){ return 'Event Log VIP: VIP bags tagged, cleared and loaded'; } },
+
+    { code:'APB',  zone:'checklist', once:false,
+      label:'Event 7: ANA called for problem bags',
+      text:function(){ return 'Event Log APB: ANA Airside Incharge called for problem bags'; } },
+
+    { code:'RDB',  zone:'checklist', once:false,
+      label:'Event 8: ANA & dispatcher informed — bags sent',
+      text:function(){ return 'Event Log RDB: ANA and Dnata informed when refer to dispatcher bags sent'; } },
+
+    { code:'ACS',  zone:'checklist', once:false,
+      label:'Event 9: All containers/wessex secured before dispatch',
+      text:function(){ return 'Event Log ACS: All containers/wessex secured before dispatching to aircraft'; } },
+
+    { code:'PNB',  zone:'checklist', once:true,
+      label:'Event 10: All bags rescanned (non-scanned check)',
+      text:function(){ return 'Event Log PNB: All bags rescanned to check possible non scanned bag'; } },
+
+    { code:'LBR',  zone:'checklist', once:false,
+      label:'Event 11: ANA informed — late bags received',
+      text:function(){ return 'Event Log LBR: ANA informed when late bags received'; } },
+
+    { code:'BMA',  zone:'checklist', once:true,
+      label:'Event 12: All BRS scanners & phones accounted for',
+      text:function(){ return 'Event Log BMA: All BRS scanners & mobile phones accounted for'; } },
+
+    { code:'VIPY', zone:'vip', once:true, exclusiveWith:'VIPN',
+      label:'Event 13: VIP Bags Loaded — Ops Informed',
+      text:function(){ return 'Event Log VIPY: VIP Bags loaded as per standard. Operations Informed'; } },
+
+    { code:'VIPN', zone:'vip', once:true, exclusiveWith:'VIPY',
+      label:'Event 14: NIL VIP Bags Loaded — Ops Informed',
+      text:function(){ return 'Event Log VIPN: NIL VIP Bags loaded. Operations Informed'; } }
+  ];
+
+  // ---- Local, per-device, per-shift state ----
+  var state = { entries: [] }; // { code, time, label, handler }
+
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+  }
+
+  function load(){
+    var savedDate = localStorage.getItem('spur_shift_date');
+    if(savedDate === todayStr()){
+      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
+    } else {
+      state = { entries: [] };
+      persistState();
+    }
+    document.getElementById('flightInput').value = localStorage.getItem('spur_flight') || 'ANA NH212';
+  }
+  function persistState(){
+    localStorage.setItem('spur_shift_date', todayStr());
+    localStorage.setItem('spur_shift_state', JSON.stringify(state));
+  }
+  function persistFields(){
+    localStorage.setItem('spur_flight', document.getElementById('flightInput').value.trim());
+  }
+
+  function newShift(){
+    if(!confirm('Start a fresh shift on this device? This clears today\'s local checklist (it does not affect anything already submitted).')) return;
+    state = { entries: [] };
+    persistState();
+    render();
+  }
+
+  // ---- Submit exactly like a QR scan: silent GET to the Form's response endpoint ----
+  function submitToForm(text){
+    var url = FORM_ACTION + '?' + FORM_FIELD + '=' + encodeURIComponent(text).replace(/%20/g, '+');
+    return fetch(url, { method: 'GET', mode: 'no-cors' });
+  }
+
+  function currentFlight(){ return document.getElementById('flightInput').value.trim(); }
+
+  function fire(code, label, text){
+    persistFields();
+    var now = new Date();
+    var timeStr = ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+    submitToForm(text).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
+    state.entries.push({ code:code, time:timeStr, label:label });
+    persistState();
+    render();
+  }
+
+  function logChecklistEvent(evt){
+    fire(evt.code, evt.label, evt.text({ flight: currentFlight() }));
+  }
+
+  function logSupervisorSignin(){
+    var select = document.getElementById('supervisorSelect');
+    var name = select.value;
+    if(!name){ alert('Choose the supervisor signing in first.'); return; }
+    var sigEvt = EVENTS.filter(function(e){ return e.code === 'SIG'; })[0];
+    var text = sigEvt.text({ name: name, flight: currentFlight() });
+    fire('SIG', sigEvt.label + ' — ' + name, text);
+  }
+
+  // ---- Rendering ----
+  function entriesFor(code){ return state.entries.filter(function(e){ return e.code === code; }); }
+
+  function render(){
+    renderSignin();
+    renderZone('checklist', document.getElementById('checklistZone'));
+    renderVip();
+    renderProgress();
+    renderLog();
+  }
+
+  function renderSignin(){
+    var container = document.getElementById('signinZone');
+    var hits = entriesFor('SIG');
+    var done = hits.length > 0;
+    container.innerHTML =
+      '<div class="signin-form ' + (done ? 'done' : '') + '">' +
+        '<div class="signin-row">' +
+          '<div class="field">' +
+            '<label for="supervisorSelect">Supervisor signing in</label>' +
+            '<select id="supervisorSelect"><option value="">Select name…</option>' +
+              TS_NAMES.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<button id="supervisorSignInBtn">Log Sign-In</button>' +
+        '</div>' +
+        '<div class="status ' + (done ? 'ok' : 'pending') + '">' +
+          (done ? ('✓ Signed in ' + hits[hits.length-1].time) : 'Not signed in yet') +
+        '</div>' +
+      '</div>';
+    document.getElementById('supervisorSignInBtn').onclick = logSupervisorSignin;
+  }
+
+  function renderZone(zoneName, container){
+    container.innerHTML = '';
+    EVENTS.filter(function(e){ return e.zone === zoneName; }).forEach(function(evt){
+      var hits = entriesFor(evt.code);
+      var done = hits.length > 0;
+      var btn = document.createElement('button');
+      btn.className = 'evt ' + (done ? 'done' : 'pending');
+      var statusText = done
+        ? (evt.once ? ('✓ Done ' + hits[hits.length-1].time) : ('✓ Logged ' + hits.length + '× — last ' + hits[hits.length-1].time))
+        : 'Not done yet — tap to log';
+      btn.innerHTML = '<span class="code">' + evt.code + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+      btn.onclick = function(){ logChecklistEvent(evt); };
+      container.appendChild(btn);
+    });
+  }
+
+  function renderVip(){
+    var container = document.getElementById('vipZone');
+    container.innerHTML = '';
+    EVENTS.filter(function(e){ return e.zone === 'vip'; }).forEach(function(evt){
+      var hits = entriesFor(evt.code);
+      var done = hits.length > 0;
+      var btn = document.createElement('button');
+      btn.className = 'evt ' + (done ? 'done' : 'pending');
+      var statusText = done ? ('✓ Done ' + hits[hits.length-1].time) : 'Tap to log';
+      btn.innerHTML = '<span class="code">' + evt.code + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+      btn.onclick = function(){ logChecklistEvent(evt); };
+      container.appendChild(btn);
+    });
+  }
+
+  function renderProgress(){
+    var checklist = EVENTS.filter(function(e){ return e.zone === 'checklist' || e.zone === 'signin'; });
+    var done = checklist.filter(function(e){ return entriesFor(e.code).length > 0; });
+    var vipDone = EVENTS.filter(function(e){ return e.zone === 'vip'; }).some(function(e){ return entriesFor(e.code).length > 0; });
+    var total = checklist.length + 1;
+    var completed = done.length + (vipDone ? 1 : 0);
+    var pct = total ? Math.round((completed/total)*100) : 0;
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = completed + ' / ' + total + ' checklist items done';
+
+    var missing = checklist.filter(function(e){ return entriesFor(e.code).length === 0; }).map(function(e){ return e.code; });
+    if(!vipDone) missing.push('VIP Y/N');
+    var chipHtml = missing.map(function(c){ return '<span class="missing-chip">Missing: ' + c + '</span>'; }).join('');
+    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="missing-chip" style="background:#e6f4ea;color:#1e8e3e;">All items logged ✓</span>';
+  }
+
+  function renderLog(){
+    var list = document.getElementById('logList');
+    var sorted = state.entries.slice().sort(function(a,b){ return a.time > b.time ? -1 : 1; });
+    if(sorted.length === 0){
+      list.innerHTML = '<div class="empty">Nothing logged yet this shift on this device.</div>';
+      return;
+    }
+    list.innerHTML = sorted.map(function(e){
+      return '<div class="log-row"><div class="log-time">' + e.time + '</div><div class="log-desc">' + e.label + '</div></div>';
+    }).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    load();
+    document.getElementById('flightInput').addEventListener('change', persistFields);
+    render();
+  });
+</script>
+</body>
+</html>
