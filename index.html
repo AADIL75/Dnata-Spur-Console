@@ -534,10 +534,18 @@
   }
 
   function logChecklistEvent(evt){
+    if(evt.once && entriesFor(evt.code).length > 0){
+      showToast('Already logged this shift — no need to log it again', '🔒');
+      return;
+    }
     fire(evt.code, evt.label, evt.text({ flight: currentFlight() }));
   }
 
   function logSupervisorSignin(){
+    if(entriesFor('SIG').length > 0){
+      showToast('Supervisor already signed in this shift', '🔒');
+      return;
+    }
     var select = document.getElementById('supervisorSelect');
     var name = select.value;
     if(!name){
@@ -576,6 +584,10 @@
   }
 
   function openScanner(num, dir){
+    if(entriesFor(scannerCode(num, dir)).length > 0){
+      showToast('Scanner ' + num + ' already logged ' + dir + ' this shift', '🔒');
+      return;
+    }
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       showToast('Camera scanning isn\'t supported in this browser — scan the sticker with your phone\'s normal camera/QR app instead', '📷');
       return;
