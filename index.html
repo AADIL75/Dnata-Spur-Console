@@ -67,6 +67,19 @@
   .evt .code-tag{font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--grey); background:#fff; border:1px solid var(--border); border-radius:6px; padding:2px 6px; flex-shrink:0;}
   .evt.done .code-tag{background:#fff; border-color:var(--green-border); color:var(--green);}
 
+  /* repeatable events (can happen more than once a shift) stay visually "open", never locked-green */
+  .evt.repeatable{background:#eef3ff; border-color:#c3d6fb;}
+  .evt.repeatable .dot{background:var(--blue); border-color:var(--blue); color:#fff; font-size:11px; font-weight:700;}
+  .evt.repeatable .status{color:var(--blue-dark); font-weight:600;}
+  .evt.repeatable.pending .dot{background:#fff; border-color:var(--border); color:var(--grey);}
+  .evt.repeatable.pending .status{color:var(--grey); font-weight:400;}
+  .evt.repeatable .code-tag{background:#fff; border-color:#c3d6fb; color:var(--blue-dark);}
+
+  /* optional / situational events — not counted toward "still to do"; muted until logged */
+  .evt.optional.pending{background:#fff; border-style:dashed;}
+  .evt.optional.pending .status{color:var(--grey); font-style:italic;}
+  .optional-tag{font-size:10px; font-weight:700; letter-spacing:.03em; color:var(--grey); background:var(--grey-bg); border:1px solid var(--border); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; text-transform:uppercase;}
+
   .vip-row{display:flex; gap:10px;}
   .vip-row .evt{flex:1; flex-direction:column; text-align:center; align-items:center; min-height:78px; justify-content:center;}
   .vip-row .evt .label{font-size:13.5px;}
@@ -233,7 +246,7 @@
       label:'Event 7: ANA called for problem bags',
       text:function(){ return 'Event Log APB: ANA Airside Incharge called for problem bags'; } },
 
-    { code:'RDB',  zone:'checklist', once:false,
+    { code:'RDB',  zone:'checklist', once:false, optional:true,
       label:'Event 8: ANA & dispatcher informed — bags sent',
       text:function(){ return 'Event Log RDB: ANA and Dnata informed when refer to dispatcher bags sent'; } },
 
@@ -241,11 +254,11 @@
       label:'Event 9: All containers/wessex secured before dispatch',
       text:function(){ return 'Event Log ACS: All containers/wessex secured before dispatching to aircraft'; } },
 
-    { code:'PNB',  zone:'checklist', once:true,
+    { code:'PNB',  zone:'checklist', once:true, optional:true,
       label:'Event 10: All bags rescanned (non-scanned check)',
       text:function(){ return 'Event Log PNB: All bags rescanned to check possible non scanned bag'; } },
 
-    { code:'LBR',  zone:'checklist', once:false,
+    { code:'LBR',  zone:'checklist', once:false, optional:true,
       label:'Event 11: ANA informed — late bags received',
       text:function(){ return 'Event Log LBR: ANA informed when late bags received'; } },
 
@@ -378,14 +391,31 @@
       var hits = entriesFor(evt.code);
       var done = hits.length > 0;
       var btn = document.createElement('button');
-      btn.className = 'evt ' + (done ? 'done' : 'pending');
-      var statusText = done
-        ? (evt.once ? ('Done at ' + hits[hits.length-1].time) : ('Logged ' + hits.length + '× — last ' + hits[hits.length-1].time))
-        : 'Not done yet — tap to log';
-      btn.innerHTML =
-        '<span class="dot">' + (done ? '✓' : '') + '</span>' +
-        '<span class="evt-text"><span class="label">' + evt.label + '</span><br><span class="status">' + statusText + '</span></span>' +
-        '<span class="code-tag">' + evt.code + '</span>';
+
+      var optionalTag = evt.optional ? '<span class="optional-tag">If applicable</span>' : '';
+
+      if(evt.once){
+        // one-off event: green + checkmark once logged, matches a normal checklist tick
+        btn.className = 'evt ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
+        var statusText = done
+          ? ('Done at ' + hits[hits.length-1].time)
+          : (evt.optional ? "Only log this if it happens — otherwise leave it" : 'Not done yet — tap to log');
+        btn.innerHTML =
+          '<span class="dot">' + (done ? '✓' : '') + '</span>' +
+          '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
+          '<span class="code-tag">' + evt.code + '</span>';
+      } else {
+        // repeatable event: can happen several times a shift — never looks "locked done",
+        // always inviting another tap, shows a running count instead of a checkmark
+        btn.className = 'evt repeatable ' + (evt.optional ? 'optional ' : '') + (done ? 'done' : 'pending');
+        var statusText = done
+          ? ('Logged ' + hits.length + '× so far — last ' + hits[hits.length-1].time + ' — tap again if it happens again')
+          : (evt.optional ? 'Only tap this if the situation actually comes up' : 'Can happen more than once — tap every time it does');
+        btn.innerHTML =
+          '<span class="dot">' + (done ? hits.length : '') + '</span>' +
+          '<span class="evt-text"><span class="label">' + evt.label + optionalTag + '</span><br><span class="status">' + statusText + '</span></span>' +
+          '<span class="code-tag">' + evt.code + '</span>';
+      }
       btn.onclick = function(){ logChecklistEvent(evt); };
       container.appendChild(btn);
     });
@@ -427,7 +457,9 @@
   }
 
   function renderProgress(){
-    var checklist = EVENTS.filter(function(e){ return e.zone === 'checklist' || e.zone === 'signin'; });
+    // optional/situational events (RDB, PNB, LBR) don't count toward the required
+    // total or the "still to do" list — they may not apply at all this shift.
+    var checklist = EVENTS.filter(function(e){ return (e.zone === 'checklist' || e.zone === 'signin') && !e.optional; });
     var done = checklist.filter(function(e){ return entriesFor(e.code).length > 0; });
     var vipDone = EVENTS.filter(function(e){ return e.zone === 'vip'; }).some(function(e){ return entriesFor(e.code).length > 0; });
     var total = checklist.length + 1;
@@ -440,7 +472,7 @@
     if(!vipDone) missing.push('VIP Y/N');
     document.getElementById('missingCount').textContent = missing.length ? (missing.length + ' left') : '';
     var chipHtml = missing.map(function(c){ return '<span class="missing-chip">' + c + '</span>'; }).join('');
-    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="all-done-chip">All items logged ✓</span>';
+    document.getElementById('missingChips').innerHTML = chipHtml || '<span class="all-done-chip">All required items logged ✓</span>';
   }
 
   function renderLog(){
