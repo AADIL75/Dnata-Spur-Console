@@ -160,6 +160,7 @@
     font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
     color:var(--teal); margin:6px 2px -2px; display:flex; align-items:center; gap:6px;
   }
+  .mini-section-label.pink{ color:var(--pink); }
 
   /* ---- camera QR scan overlay (real Log In/Out for scanners) ---- */
   .scan-overlay{
@@ -256,7 +257,7 @@
 
   <div class="card">
     <h2><span class="icon-badge badge-blue">🛫</span>Shift details</h2>
-    <label for="flightInput">Flight / Spur</label>
+    <label for="flightInput">Flight number</label>
     <input type="text" id="flightInput" placeholder="e.g. ANA NH212">
   </div>
 
@@ -288,11 +289,6 @@
   <div class="card">
     <h2><span class="icon-badge badge-green">✅</span>Checklist events</h2>
     <div id="checklistZone" class="stack"></div>
-  </div>
-
-  <div class="card">
-    <h2><span class="icon-badge badge-pink">⭐</span>VIP bags — choose one</h2>
-    <div id="vipZone" class="vip-row"></div>
   </div>
 
   <div class="card">
@@ -648,7 +644,6 @@
     renderSignin();
     renderScanInZone();
     renderChecklist();
-    renderVip();
     renderProgress();
     renderLog();
     if(justLoggedCode){
@@ -745,6 +740,18 @@
     container.innerHTML = '';
     EVENTS.filter(function(e){ return e.zone === 'checklist'; }).forEach(function(evt){
       if(evt.code === 'BMA'){
+        // VIP bags choice happens after Event 11, before scanner Log Out and Event 12
+        var vipLabel = document.createElement('div');
+        vipLabel.className = 'mini-section-label pink';
+        vipLabel.textContent = '⭐ VIP Bags — Choose One';
+        container.appendChild(vipLabel);
+        var vipRow = document.createElement('div');
+        vipRow.className = 'vip-row';
+        EVENTS.filter(function(e){ return e.zone === 'vip'; }).forEach(function(vevt){
+          vipRow.appendChild(buildVipTile(vevt));
+        });
+        container.appendChild(vipRow);
+
         // Scanner Log Out happens right before the "all scanners accounted for" check
         var label = document.createElement('div');
         label.className = 'mini-section-label';
@@ -758,20 +765,16 @@
     });
   }
 
-  function renderVip(){
-    var container = document.getElementById('vipZone');
-    container.innerHTML = '';
-    EVENTS.filter(function(e){ return e.zone === 'vip'; }).forEach(function(evt){
-      var hits = entriesFor(evt.code);
-      var done = hits.length > 0;
-      var btn = document.createElement('button');
-      btn.setAttribute('data-code', evt.code);
-      btn.className = 'evt ' + (done ? 'done' : 'pending');
-      var statusText = done ? ('✓ ' + hits[hits.length-1].time) : 'Tap to log';
-      btn.innerHTML = '<span class="dot">' + evt.icon + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
-      btn.onclick = function(){ logChecklistEvent(evt); };
-      container.appendChild(btn);
-    });
+  function buildVipTile(evt){
+    var hits = entriesFor(evt.code);
+    var done = hits.length > 0;
+    var btn = document.createElement('button');
+    btn.setAttribute('data-code', evt.code);
+    btn.className = 'evt ' + (done ? 'done' : 'pending');
+    var statusText = done ? ('✓ ' + hits[hits.length-1].time) : 'Tap to log';
+    btn.innerHTML = '<span class="dot">' + evt.icon + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
+    btn.onclick = function(){ logChecklistEvent(evt); };
+    return btn;
   }
 
   function renderProgress(){
