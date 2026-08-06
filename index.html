@@ -602,16 +602,7 @@
     document.getElementById('scanTitle').textContent = 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out');
     document.getElementById('scanStatus').textContent = 'Point your camera at the QR code on the scanner';
     document.getElementById('scanOverlay').classList.add('show');
-    // ask for the highest resolution the device will give us — more pixels on the QR code
-    // makes a real difference when the sticker is faded, dirty, or scuffed
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment',
-        width: { ideal: 1920 },
-        height: { ideal: 1920 },
-        advanced: [{ focusMode: 'continuous' }]
-      }
-    })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(function(stream){
         scanState.stream = stream;
         var video = document.getElementById('scanVideo');
@@ -668,15 +659,15 @@
   }
   function clampByte(v){ return v < 0 ? 0 : (v > 255 ? 255 : v); }
 
-  // Digitally zooms into the middle of the frame (matching the on-screen guide box) and
+  // Digitally zooms into the middle of the frame (a bit inside the on-screen guide box) and
   // upscales it back to full canvas size — gives jsQR more effective pixels-per-module on
-  // small, far-away, or dense/damaged codes.
+  // small, far-away, or dense/damaged codes. Only ever used as a fallback (see scanLoop).
   function scanCenterCrop(video, fullW, fullH){
     if(!scanState.cropCanvas) scanState.cropCanvas = document.createElement('canvas');
     var cc = scanState.cropCanvas;
     cc.width = fullW; cc.height = fullH;
     var cctx = cc.getContext('2d');
-    var cw = fullW * 0.55, ch = fullH * 0.55;
+    var cw = fullW * 0.8, ch = fullH * 0.8;
     var cx = (fullW - cw) / 2, cy = (fullH - ch) / 2;
     cctx.drawImage(video, cx, cy, cw, ch, 0, 0, fullW, fullH);
     var cropData = cctx.getImageData(0, 0, fullW, fullH);
@@ -690,23 +681,27 @@
     }
     var video = document.getElementById('scanVideo');
     var canvas = document.getElementById('scanCanvas');
-    if(video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth){
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       var ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      // Rotate through three read strategies frame-by-frame (rather than all three every
-      // frame) so a hard-to-read sticker still gets ~10 attempts/sec of each without
-      // dropping the video feed to a crawl on older phones.
-      var mode = scanState.frameCount % 3;
-      scanState.frameCount++;
-      var code = null;
-      if(mode === 2){
-        code = scanCenterCrop(video, canvas.width, canvas.height);
-      } else {
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        if(mode === 1) boostContrast(imageData);
-        code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+      // Plain full-frame read, exactly as before — this always runs, every frame, so nothing
+      // that used to scan cleanly can ever regress because of the extra passes below.
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+      if(!code){
+        // Only reached when the plain read just failed on this frame — try one extra
+        // strategy (alternating each frame) to help with faded/dirty or small/far codes,
+        // without adding cost to the frames that already succeed normally.
+        var mode = scanState.frameCount % 2;
+        scanState.frameCount++;
+        if(mode === 0){
+          boostContrast(imageData);
+          code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+        } else {
+          code = scanCenterCrop(video, canvas.width, canvas.height);
+        }
       }
       if(code && code.data){
         handleScanResult(code.data);
