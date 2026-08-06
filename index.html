@@ -150,6 +150,17 @@
     font-size:15px; font-weight:700; cursor:pointer;
   }
   .signin-row button:active{opacity:.85;}
+  .signin-row button:disabled{background:#d9d5ea; color:#9c95b8; cursor:not-allowed;}
+  /* once a name is picked, the button demands attention so the tap doesn't get forgotten */
+  .signin-row button.armed{
+    background:var(--orange); box-shadow:0 0 0 0 rgba(234,88,12,.55);
+    animation:armed-pulse 1.1s ease-out infinite;
+  }
+  @keyframes armed-pulse{
+    0%{box-shadow:0 0 0 0 rgba(234,88,12,.55);}
+    70%{box-shadow:0 0 0 12px rgba(234,88,12,0);}
+    100%{box-shadow:0 0 0 0 rgba(234,88,12,0);}
+  }
   .signin-status{font-size:12.5px; margin-top:10px; font-weight:600;}
   .signin-status.ok{color:var(--green);}
   .signin-status.pending{color:var(--purple);}
@@ -774,13 +785,30 @@
               TS_NAMES.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<button id="supervisorSignInBtn">🖊️ Log Sign-In</button>' +
+          '<button id="supervisorSignInBtn" ' + (done ? '' : 'disabled') + '>🖊️ Log Sign-In</button>' +
         '</div>' +
         '<div class="signin-status ' + (done ? 'ok' : 'pending') + '">' +
-          (done ? ('✅ Signed in at ' + hits[hits.length-1].time) : 'Not signed in yet') +
+          (done ? ('✅ Signed in at ' + hits[hits.length-1].time) : 'Choose a name, then tap the button to sign in') +
         '</div>' +
       '</div>';
-    document.getElementById('supervisorSignInBtn').onclick = logSupervisorSignin;
+    // Keep the explicit confirm step (pick name, THEN tap) so a wrong name can't sign someone
+    // in by accident — but the button is disabled/dim until a name is picked, and once it is,
+    // it flips to a pulsing, unmissable "tap me" state so the step doesn't get forgotten.
+    var select = document.getElementById('supervisorSelect');
+    var btn = document.getElementById('supervisorSignInBtn');
+    select.onchange = function(){
+      if(done) return;
+      if(select.value){
+        btn.disabled = false;
+        btn.classList.add('armed');
+        btn.textContent = '👉 Tap here to confirm sign-in';
+      } else {
+        btn.disabled = true;
+        btn.classList.remove('armed');
+        btn.textContent = '🖊️ Log Sign-In';
+      }
+    };
+    btn.onclick = logSupervisorSignin;
   }
 
   function buildEventTile(evt){
