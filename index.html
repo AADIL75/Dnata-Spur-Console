@@ -85,6 +85,18 @@
     background-size:16px;
   }
   input[type=text]:focus, select:focus{outline:none; border-color:var(--blue);}
+  textarea{
+    font-size:15px; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px; width:100%;
+    background:#fff; color:var(--text); font-family:inherit; resize:vertical; min-height:64px;
+  }
+  textarea:focus{outline:none; border-color:var(--blue);}
+  .remarks-btn{
+    width:100%; margin-top:10px; background:var(--purple); color:#fff; border:none; border-radius:12px;
+    padding:13px 14px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  .remarks-btn:active{opacity:.85;}
+  .remarks-btn:disabled{background:#d9d5ea; color:#9c95b8; cursor:not-allowed;}
+  .remarks-hint{font-size:12.5px; margin-top:10px; font-weight:600; color:var(--purple);}
 
   .missing-chip{display:inline-block; background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-border); border-radius:20px; padding:5px 12px; font-size:12.5px; margin:0 6px 6px 0; font-weight:600;}
   .celebrate{
@@ -315,6 +327,11 @@
   </div>
 
   <div class="card">
+    <h2><span class="icon-badge badge-purple">📝</span>Remarks</h2>
+    <div id="remarksZone"></div>
+  </div>
+
+  <div class="card">
     <h2><span class="icon-badge badge-blue">🕒</span>Activity log</h2>
     <div class="log-list" id="logList"></div>
   </div>
@@ -359,6 +376,9 @@
   // ---- Google Form this console submits to (decoded from your printed QR codes) ----
   var FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSdn0IWumBH5a-OJ519QycvCNawb6NvdObF_kUsKNvla_nctgQ/formResponse';
   var FORM_FIELD  = 'entry.724181957';
+  // Remarks has its own dedicated question/column on the Form — the shared Event Log field
+  // above is restricted to the fixed set of known event strings, so free text has to go here.
+  var REMARKS_FIELD = 'entry.1764730073';
 
   // ---- TS names — cross-checked against the actual "Spur Supervisors 1 & 2" QR
   // sheets. Joe Karavias, Monit Chunilal, Mohammad Yousebzaie were found on the QR
@@ -527,9 +547,11 @@
     });
   }
 
-  // ---- Submit exactly like a QR scan: silent GET to the Form's response endpoint ----
-  function submitToForm(text){
-    var url = FORM_ACTION + '?' + FORM_FIELD + '=' + encodeURIComponent(text).replace(/%20/g, '+');
+  // ---- Submit exactly like a QR scan: silent GET to the Form's response endpoint.
+  // field defaults to the shared Event Log field; Remarks passes REMARKS_FIELD instead. ----
+  function submitToForm(text, field){
+    var targetField = field || FORM_FIELD;
+    var url = FORM_ACTION + '?' + targetField + '=' + encodeURIComponent(text).replace(/%20/g, '+');
     return fetch(url, { method: 'GET', mode: 'no-cors' });
   }
 
@@ -539,9 +561,9 @@
     return ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
   }
 
-  function fire(code, label, text){
+  function fire(code, label, text, field){
     persistFields();
-    submitToForm(text).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
+    submitToForm(text, field).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
     state.entries.push({ code:code, time:nowTime(), label:label });
     persistState();
     justLoggedCode = code;
@@ -554,6 +576,34 @@
       return;
     }
     fire(evt.code, evt.label, evt.text({ flight: currentFlight() }));
+  }
+
+  // ---- Remarks — free-text notes, optional, unlimited per shift. Same submission
+  // mechanism as every other tile (fire()), just with typed text instead of a fixed
+  // string, so it lands in the same Sheet column as everything else. ----
+  function logRemark(){
+    var input = document.getElementById('remarksInput');
+    var text = input.value.trim();
+    if(!text) return;
+    // Submitted plain — it lands in its own dedicated "Remarks" column now, so it doesn't
+    // need the "Event Log RMK:" prefix that mixed-column entries use. The on-screen label
+    // keeps the prefix so it's still clearly a remark when mixed into the Activity log below.
+    fire('RMK', 'Remarks from Spur TS: ' + text, text, REMARKS_FIELD);
+    input.value = '';
+    document.getElementById('remarksLogBtn').disabled = true;
+    showToast('Remark logged', '📝');
+  }
+
+  function renderRemarks(){
+    var container = document.getElementById('remarksZone');
+    container.innerHTML =
+      '<textarea id="remarksInput" rows="3" placeholder="e.g. Ramp equipment blocking spur 4"></textarea>' +
+      '<button class="remarks-btn" id="remarksLogBtn" disabled>📝 Log remark</button>' +
+      '<div class="remarks-hint">Optional — log as many as you need this shift</div>';
+    var input = document.getElementById('remarksInput');
+    var btn = document.getElementById('remarksLogBtn');
+    input.oninput = function(){ btn.disabled = !input.value.trim(); };
+    btn.onclick = logRemark;
   }
 
   function logSupervisorSignin(){
@@ -969,6 +1019,7 @@
   document.addEventListener('DOMContentLoaded', function(){
     load();
     document.getElementById('flightInput').addEventListener('change', persistFields);
+    renderRemarks();
     render();
   });
 </script>
