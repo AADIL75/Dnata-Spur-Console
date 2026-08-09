@@ -243,7 +243,10 @@
 
   /* ---- confirm modal ---- */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(20,15,45,.45); z-index:300;
+    /* Above .scan-overlay's z-index:400 on purpose — this can be triggered while the
+       camera view is still open (e.g. the scanner fallback link), and needs to be visible
+       on top of it rather than hidden underneath. */
+    position:fixed; inset:0; background:rgba(20,15,45,.45); z-index:410;
     display:flex; align-items:flex-end; justify-content:center;
     opacity:0; pointer-events:none; transition:opacity .2s ease;
   }
@@ -844,7 +847,11 @@
   document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('scanCloseBtn').onclick = closeScanner;
     document.getElementById('scanFallbackBtn').onclick = function(){
-      markScannerDoneLocally(scanState.num, scanState.dir);
+      // Capture num/dir before closing — closeScanner() doesn't clear them, but grab a
+      // local copy anyway so this reads clearly and can't be affected by anything else.
+      var num = scanState.num, dir = scanState.dir;
+      closeScanner();
+      markScannerDoneLocally(num, dir);
     };
   });
 
