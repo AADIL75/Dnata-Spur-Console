@@ -210,6 +210,12 @@
     box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none;
   }
   .scan-status{color:#e7e7f5; font-size:12.5px; line-height:1.5; margin-top:12px; text-align:center; min-height:34px;}
+  .scan-fallback-link{
+    display:block; width:100%; margin-top:10px; padding-top:12px; border-top:1px solid rgba(255,255,255,.14);
+    background:none; border-left:none; border-right:none; border-bottom:none; color:#b9b6e8;
+    font-size:12px; font-weight:600; text-align:center; cursor:pointer; text-decoration:underline;
+  }
+  .scan-fallback-link:active{opacity:.7;}
 
   .log-list{max-height:240px; overflow-y:auto; font-size:13px;}
   .log-row{display:flex; gap:10px; padding:8px 2px; border-bottom:1px solid #f0f0f0;}
@@ -366,6 +372,7 @@
       <div class="scan-frame"></div>
     </div>
     <div class="scan-status" id="scanStatus">Point your camera at the QR code on the scanner</div>
+    <button class="scan-fallback-link" id="scanFallbackBtn">Trouble scanning? I already used my phone's camera app →</button>
   </div>
 </div>
 <canvas id="scanCanvas" style="display:none;"></canvas>
@@ -663,7 +670,12 @@
     document.getElementById('scanTitle').textContent = 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out');
     document.getElementById('scanStatus').textContent = 'Point your camera at the QR code on the scanner';
     document.getElementById('scanOverlay').classList.add('show');
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    // 'advanced' constraints are best-effort hints — unsupported ones are silently ignored
+    // per spec rather than causing getUserMedia to fail, so this is safe to request even on
+    // browsers/devices that don't support it (mainly iOS Safari, which ignores it entirely).
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', advanced: [{ focusMode: 'continuous' }] }
+    })
       .then(function(stream){
         scanState.stream = stream;
         var video = document.getElementById('scanVideo');
@@ -801,8 +813,39 @@
     document.getElementById('scanTorchBtn').classList.remove('torch-on');
     document.getElementById('scanOverlay').classList.remove('show');
   }
+
+  // Escape hatch for when the in-app camera genuinely can't read a sticker (focus, lighting,
+  // damaged code) but the phone's own camera/QR app can. That app submits to the exact same
+  // Form field as this console does, so the Sheet is already correct — this only updates the
+  // LOCAL checklist so it stops showing the item as outstanding. No second submission is sent.
+  function markScannerDoneLocally(num, dir){
+    if(entriesFor(scannerCode(num, dir)).length > 0){
+      showToast('Scanner ' + num + ' already logged ' + dir + ' this shift', '🔒');
+      return;
+    }
+    var dirLabel = dir === 'in' ? 'In' : 'Out';
+    showConfirm({
+      icon:'📷',
+      title:'Mark Scanner ' + num + ' — Log ' + dirLabel + ' as done here?',
+      body:'Only confirm this if you\'ve already scanned the sticker with your phone\'s normal camera or QR app — that already sent the real entry to the Sheet. This just updates your local checklist here; it does not submit anything again.',
+      confirmLabel:'Yes, already scanned',
+      onConfirm:function(){
+        closeScanner();
+        var code = scannerCode(num, dir);
+        state.entries.push({ code:code, time:nowTime(), label:'Scanner ' + num + ' — Log ' + dirLabel + ' (marked done here — scanned via phone camera)' });
+        persistState();
+        justLoggedCode = code;
+        render();
+        showToast('Scanner ' + num + ' marked ' + dir + ' ✓', dir === 'in' ? '✅' : '👋');
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('scanCloseBtn').onclick = closeScanner;
+    document.getElementById('scanFallbackBtn').onclick = function(){
+      markScannerDoneLocally(scanState.num, scanState.dir);
+    };
   });
 
   // ---- Rendering ----
