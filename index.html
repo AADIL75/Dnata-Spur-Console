@@ -695,8 +695,12 @@
       });
   }
 
-  // Shows a flashlight toggle when the device/browser supports it (mostly Android Chrome —
-  // iOS Safari does not expose torch control to web pages, so the button stays hidden there).
+  // Shows a flashlight toggle when the device/browser reports it supports one — purely
+  // feature-detected, not tied to any specific platform. In practice this has turned out to
+  // be inconsistent: works on iPhone (Safari), but doesn't show up on some Android devices
+  // (the phone/browser just doesn't report the capability) — the reverse of what's commonly
+  // documented for this API. Left as feature detection either way, since that adapts
+  // automatically to whatever each device actually supports.
   function setupTorchButton(track){
     var btn = document.getElementById('scanTorchBtn');
     var caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
