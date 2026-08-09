@@ -781,6 +781,45 @@
   }
   function clampByte(v){ return v < 0 ? 0 : (v > 255 ? 255 : v); }
 
+  // Contrast stretch like boostContrast above, but robust to glare — a small blown-out
+  // reflection off a laminated sticker can hit pure white (255) while the actual code sitting
+  // in dimmer/shadowed light nearby only reaches, say, 120. boostContrast calibrates its
+  // stretch against the true min/max, so that one bright glare spot quietly ruins the stretch
+  // for the rest of the frame (it "anchors" white at 255 when the real code never gets that
+  // bright, so the stretch ends up too weak). This version calibrates against the 2nd/98th
+  // percentile of brightness instead of the true min/max, so a small number of outlier
+  // pixels — a glare hotspot, a stray shadow — can't skew the whole frame's stretch.
+  function boostContrastGlareSafe(imageData){
+    var d = imageData.data, i, lum, bin;
+    var hist = new Array(256).fill(0);
+    var total = 0;
+    for(i = 0; i < d.length; i += 4){
+      lum = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+      bin = lum < 0 ? 0 : (lum > 255 ? 255 : lum) | 0;
+      hist[bin]++;
+      total++;
+    }
+    var lowCut = total * 0.02, highCut = total * 0.98;
+    var running = 0, low = 0, high = 255;
+    for(bin = 0; bin < 256; bin++){
+      running += hist[bin];
+      if(running >= lowCut){ low = bin; break; }
+    }
+    running = 0;
+    for(bin = 255; bin >= 0; bin--){
+      running += hist[bin];
+      if(running >= (total - highCut)){ high = bin; break; }
+    }
+    var range = high - low;
+    if(range < 10) return; // already flat — stretching would just amplify noise
+    var scale = 255 / range;
+    for(i = 0; i < d.length; i += 4){
+      d[i]   = clampByte((d[i]   - low) * scale);
+      d[i+1] = clampByte((d[i+1] - low) * scale);
+      d[i+2] = clampByte((d[i+2] - low) * scale);
+    }
+  }
+
   // Digitally zooms into the middle of the frame (a bit inside the on-screen guide box) and
   // upscales it back to full canvas size — gives jsQR more effective pixels-per-module on
   // small, far-away, or dense/damaged codes. Only ever used as a fallback (see scanLoop).
@@ -814,15 +853,18 @@
       var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
       if(!code){
         // Only reached when the plain read just failed on this frame — try one extra
-        // strategy (alternating each frame) to help with faded/dirty or small/far codes,
-        // without adding cost to the frames that already succeed normally.
-        var mode = scanState.frameCount % 2;
+        // strategy (rotating frame by frame) to help with faded/dirty/glared or small/far
+        // codes, without adding cost to the frames that already succeed normally.
+        var mode = scanState.frameCount % 3;
         scanState.frameCount++;
         if(mode === 0){
           boostContrast(imageData);
           code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-        } else {
+        } else if(mode === 1){
           code = scanCenterCrop(video, canvas.width, canvas.height);
+        } else {
+          boostContrastGlareSafe(imageData);
+          code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
         }
       }
       if(code && code.data){
