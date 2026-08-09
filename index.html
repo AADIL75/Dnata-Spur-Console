@@ -203,6 +203,7 @@
   .scan-header span{font-size:14.5px; font-weight:800;}
   .scan-close{background:rgba(255,255,255,.12); border:none; color:#fff; width:32px; height:32px; border-radius:10px; font-size:16px; cursor:pointer;}
   .scan-close.torch-on{background:#ffd166; color:#111225;}
+  .scan-zoom{width:auto; min-width:32px; padding:0 8px; font-size:12.5px; font-weight:800;}
   .scan-video-wrap{position:relative; border-radius:14px; overflow:hidden; background:#000; aspect-ratio:1/1;}
   .scan-video-wrap video{width:100%; height:100%; object-fit:cover; display:block;}
   .scan-frame{
@@ -366,6 +367,7 @@
     <div class="scan-header">
       <span id="scanTitle">Scan scanner</span>
       <div style="display:flex; gap:8px;">
+        <button class="scan-close scan-zoom" id="scanZoomBtn" style="display:none;" title="Zoom in on the code">🔍1×</button>
         <button class="scan-close" id="scanTorchBtn" style="display:none;" title="Toggle flashlight">🔦</button>
         <button class="scan-close" id="scanCloseBtn">✕</button>
       </div>
@@ -676,8 +678,18 @@
     // 'advanced' constraints are best-effort hints — unsupported ones are silently ignored
     // per spec rather than causing getUserMedia to fail, so this is safe to request even on
     // browsers/devices that don't support it (mainly iOS Safari, which ignores it entirely).
+    // width/height here use 'ideal', which is also just a preference the browser tries to get
+    // close to — it does NOT reject the camera if a device can't hit it exactly, unlike 'exact'
+    // or 'min'. This matters because some Android phones default to a low-res feed (e.g.
+    // 640x480) for getUserMedia unless asked for more, which leaves small/distant QR codes
+    // with too few pixels for jsQR to lock onto.
     navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', advanced: [{ focusMode: 'continuous' }] }
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        advanced: [{ focusMode: 'continuous' }]
+      }
     })
       .then(function(stream){
         scanState.stream = stream;
@@ -687,6 +699,7 @@
         var track = stream.getVideoTracks()[0];
         scanState.track = track;
         setupTorchButton(track);
+        setupZoomButton(track);
         scanState.rafId = requestAnimationFrame(scanLoop);
       })
       .catch(function(err){
@@ -712,6 +725,35 @@
         scanState.torchOn = !scanState.torchOn;
         track.applyConstraints({ advanced: [{ torch: scanState.torchOn }] }).catch(function(){});
         btn.classList.toggle('torch-on', scanState.torchOn);
+      };
+    } else {
+      btn.style.display = 'none';
+      btn.onclick = null;
+    }
+  }
+
+  // Optical/digital zoom control — like torch, purely feature-detected via getCapabilities().
+  // Some phones (mainly Android) expose a 'zoom' capability on the video track that the camera
+  // hardware itself handles; this is separate from — and often sharper/more effective than —
+  // the software crop-and-upscale fallback in scanCenterCrop, since it's the real lens/sensor
+  // zooming rather than just stretching pixels. Cycles through low/mid/max on each tap so staff
+  // can zoom in on a small or distant code without any pinch gesture. Hidden entirely on phones
+  // that don't report support (this has been true for iPhone/Safari in testing so far).
+  function setupZoomButton(track){
+    var btn = document.getElementById('scanZoomBtn');
+    var caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
+    if(caps && caps.zoom && typeof caps.zoom.min === 'number' && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min){
+      var min = caps.zoom.min, max = caps.zoom.max, mid = min + (max - min) / 2;
+      scanState.zoomLevels = [min, mid, max];
+      scanState.zoomIndex = 0;
+      btn.style.display = 'flex';
+      btn.textContent = '🔍1×';
+      btn.onclick = function(){
+        scanState.zoomIndex = (scanState.zoomIndex + 1) % scanState.zoomLevels.length;
+        var level = scanState.zoomLevels[scanState.zoomIndex];
+        track.applyConstraints({ advanced: [{ zoom: level }] }).catch(function(){});
+        var label = ['1×', '2×', '3×'][scanState.zoomIndex] || (Math.round(level / min) + '×');
+        btn.textContent = '🔍' + label;
       };
     } else {
       btn.style.display = 'none';
@@ -816,8 +858,12 @@
     scanState.rafId = null;
     scanState.track = null;
     scanState.torchOn = false;
+    scanState.zoomLevels = null;
+    scanState.zoomIndex = 0;
     document.getElementById('scanTorchBtn').style.display = 'none';
     document.getElementById('scanTorchBtn').classList.remove('torch-on');
+    document.getElementById('scanZoomBtn').style.display = 'none';
+    document.getElementById('scanZoomBtn').textContent = '🔍1×';
     document.getElementById('scanOverlay').classList.remove('show');
   }
 
