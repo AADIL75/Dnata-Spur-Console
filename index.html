@@ -382,7 +382,8 @@
       <div class="scan-frame"></div>
     </div>
     <div class="scan-status" id="scanStatus">Point your camera at the QR code on the scanner</div>
-    <button class="scan-photo-btn" id="scanPhotoBtn" style="display:none;">📸 Take a clearer photo</button>
+    <button class="scan-photo-btn" id="scanPhotoBtn">📷 Or open your camera app to take a photo</button>
+    <input type="file" accept="image/*" capture="environment" id="scanFileInput" style="display:none;">
     <button class="scan-fallback-link" id="scanFallbackBtn">Trouble scanning? I already used my phone's camera app →</button>
   </div>
 </div>
@@ -681,6 +682,10 @@
     document.getElementById('scanTitle').textContent = 'Scanner ' + num + ' — Log ' + (dir === 'in' ? 'In' : 'Out');
     document.getElementById('scanStatus').textContent = 'Point your camera at the QR code on the scanner';
     document.getElementById('scanOverlay').classList.add('show');
+    // Wired up independent of whether the live camera below opens successfully — it uses the
+    // phone's own native camera app, not this page's video stream, so it works as a full
+    // escape hatch even when the live view fails or struggles.
+    setupPhotoCapture();
     // 'advanced' constraints are best-effort hints — unsupported ones are silently ignored
     // per spec rather than causing getUserMedia to fail, so this is safe to request even on
     // browsers/devices that don't support it (mainly iOS Safari, which ignores it entirely).
@@ -706,7 +711,6 @@
         scanState.track = track;
         setupTorchButton(track);
         setupZoomButton(track);
-        setupPhotoCapture(track);
         scanState.rafId = requestAnimationFrame(scanLoop);
       })
       .catch(function(err){
@@ -769,45 +773,39 @@
   }
 
   // Live video frames from getUserMedia on Android are frequently lower quality than what the
-  // phone's own camera app produces — Chrome's video-capture pipeline can hand web pages a more
-  // compressed/lower-resolution feed than a still photo, and continuous-video autofocus is a lot
-  // less reliable than the focus pass a camera app runs right before taking a photo. The
-  // ImageCapture API's takePhoto() triggers that same still-photo pipeline (shutter-like, so it
-  // can't run every frame like the live scan does — it's an explicit, occasional action instead).
-  // Feature-detected and purely additive: hidden entirely if unsupported, and never interferes
-  // with the live scanning loop underneath, which keeps running exactly as before regardless.
-  function setupPhotoCapture(track){
+  // phone's own camera app produces, and continuous-video autofocus is a lot less reliable than
+  // the phone's own camera app — which is exactly why "just scanning normally" already works
+  // when the in-page live view doesn't. Rather than trying to coax a better result out of the
+  // web camera feed, this hands off to the native camera app directly via a file input with the
+  // 'capture' attribute — the same standard mechanism used by ordinary "attach a photo" buttons
+  // across the web, supported far more broadly than the experimental ImageCapture API (including
+  // iOS Safari). The phone's actual camera UI opens (full native focus, zoom, flash, HDR — all
+  // the controls that already work when scanning normally), and whatever photo comes back is
+  // read the same way a live frame would be. Wired up independent of whether the live view above
+  // even opened successfully, so it works as a full escape hatch either way.
+  function setupPhotoCapture(){
     var btn = document.getElementById('scanPhotoBtn');
-    scanState.imageCapture = null;
-    if(window.ImageCapture){
-      try{
-        scanState.imageCapture = new ImageCapture(track);
-        btn.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = '📸 Take a clearer photo';
-        btn.onclick = takeClearerPhoto;
-      }catch(e){
-        btn.style.display = 'none';
-        btn.onclick = null;
-      }
-    } else {
-      btn.style.display = 'none';
-      btn.onclick = null;
-    }
+    var input = document.getElementById('scanFileInput');
+    btn.disabled = false;
+    btn.textContent = '📷 Or open your camera app to take a photo';
+    btn.onclick = function(){ input.click(); };
+    input.value = '';
+    input.onchange = handlePhotoFile;
   }
 
-  function takeClearerPhoto(){
-    if(!scanState.imageCapture) return;
+  function handlePhotoFile(evt){
+    var file = evt.target.files && evt.target.files[0];
+    evt.target.value = ''; // allow picking/retaking the same shot again later
+    if(!file) return;
     var capturedNum = scanState.num, capturedDir = scanState.dir;
     var btn = document.getElementById('scanPhotoBtn');
     var statusEl = document.getElementById('scanStatus');
     btn.disabled = true;
-    btn.textContent = '📸 Taking photo…';
-    scanState.imageCapture.takePhoto()
-      .then(function(blob){ return createImageBitmap(blob); })
+    btn.textContent = '📷 Reading photo…';
+    createImageBitmap(file)
       .then(function(bitmap){
         // The overlay may have been closed, or reopened for a different scanner, while the
-        // photo was still being captured — bail out quietly rather than act on stale context.
+        // camera app was open — bail out quietly rather than act on stale context.
         // (handleScanResult below also re-checks before firing, so this can't cause a
         // duplicate Sheet submission either way — this just avoids touching stale UI.)
         if(scanState.num !== capturedNum || scanState.dir !== capturedDir ||
@@ -822,19 +820,19 @@
         var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         var code = attemptAllReads(imageData, bitmap, canvas.width, canvas.height);
         btn.disabled = false;
-        btn.textContent = '📸 Take a clearer photo';
+        btn.textContent = '📷 Or open your camera app to take a photo';
         if(code && code.data){
           handleScanResult(code.data);
         } else {
-          statusEl.textContent = "Couldn't find a code in that photo — reposition a little and try again, or keep pointing the camera below.";
+          statusEl.textContent = "Couldn't find a code in that photo — try again, angle the sticker to avoid glare, or keep pointing the camera below.";
         }
       })
       .catch(function(){
-        // Photo capture isn't actually usable here despite ImageCapture existing (support is
-        // inconsistent across Android devices/browsers) — hide the button rather than leave a
-        // dead end. Live scanning below is unaffected either way.
-        btn.style.display = 'none';
+        // The selected file wasn't a readable image for some reason — reset and let them retry
+        // rather than leave the button stuck disabled.
         btn.disabled = false;
+        btn.textContent = '📷 Or open your camera app to take a photo';
+        statusEl.textContent = "That photo couldn't be read — please try again.";
       });
   }
 
@@ -913,7 +911,7 @@
   }
 
   // Runs every read strategy immediately against a single image, rather than rotating one per
-  // frame like scanLoop does. Used only for the one-off "Take a clearer photo" capture, where
+  // frame like scanLoop does. Used only for the one-off native-camera photo handoff, where
   // there's a single still image to get right rather than a steady stream of frames to budget
   // across — worth spending the extra milliseconds to try everything at once.
   function attemptAllReads(imageData, source, fullW, fullH){
@@ -1005,14 +1003,14 @@
     scanState.torchOn = false;
     scanState.zoomLevels = null;
     scanState.zoomIndex = 0;
-    scanState.imageCapture = null;
     document.getElementById('scanTorchBtn').style.display = 'none';
     document.getElementById('scanTorchBtn').classList.remove('torch-on');
     document.getElementById('scanZoomBtn').style.display = 'none';
     document.getElementById('scanZoomBtn').textContent = '🔍1×';
-    document.getElementById('scanPhotoBtn').style.display = 'none';
     document.getElementById('scanPhotoBtn').disabled = false;
-    document.getElementById('scanPhotoBtn').textContent = '📸 Take a clearer photo';
+    document.getElementById('scanPhotoBtn').textContent = '📷 Or open your camera app to take a photo';
+    document.getElementById('scanPhotoBtn').onclick = null;
+    document.getElementById('scanFileInput').onchange = null;
     document.getElementById('scanOverlay').classList.remove('show');
   }
 
