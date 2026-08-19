@@ -463,28 +463,32 @@
       label:'Event 8: ANA & Dnata informed — bags referred to dispatcher, sent',
       text:function(){ return 'Event Log RDB: ANA and Dnata informed when refer to dispatcher bags sent'; } },
 
+    { code:'BGO',  zone:'checklist', once:false, icon:'🔢',
+      label:'Event 9: Bingo cards created / numbers cross-checked with Brock',
+      text:function(){ return 'Event Log BGO: Bingo cards created and numbers cross-checked with Brock'; } },
+
     { code:'ACS',  zone:'checklist', once:false, icon:'🔒',
-      label:'Event 9: All containers/wessex secured before dispatch',
+      label:'Event 10: All containers/wessex secured before dispatch',
       text:function(){ return 'Event Log ACS: All containers/wessex secured before dispatching to aircraft'; } },
 
     { code:'PNB',  zone:'checklist', once:true, optional:true, icon:'🔄',
-      label:'Event 10: All bags rescanned (non-scanned check)',
+      label:'Event 11: All bags rescanned (non-scanned check)',
       text:function(){ return 'Event Log PNB: All bags rescanned to check possible non scanned bag'; } },
 
     { code:'LBR',  zone:'checklist', once:false, optional:true, icon:'⏰',
-      label:'Event 11: ANA informed — late bags received',
+      label:'Event 12: ANA informed — late bags received',
       text:function(){ return 'Event Log LBR: ANA informed when late bags received'; } },
 
     { code:'BMA',  zone:'checklist', once:true, icon:'🧰',
-      label:'Event 12: All BRS scanners & phones accounted for',
+      label:'Event 13: All BRS scanners & phones accounted for',
       text:function(){ return 'Event Log BMA: All BRS scanners & mobile phones accounted for'; } },
 
     { code:'VIPY', zone:'vip', once:true, exclusiveWith:'VIPN', icon:'✅',
-      label:'Event 13: VIP Loaded — Ops Informed',
+      label:'Event 14: VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPY: VIP Bags loaded as per standard. Operations Informed'; } },
 
     { code:'VIPN', zone:'vip', once:true, exclusiveWith:'VIPY', icon:'🚫',
-      label:'Event 14: NIL VIP Loaded — Ops Informed',
+      label:'Event 15: NIL VIP Loaded — Ops Informed',
       text:function(){ return 'Event Log VIPN: NIL VIP Bags loaded. Operations Informed'; } }
   ];
 
@@ -1202,7 +1206,7 @@
     container.innerHTML = '';
     EVENTS.filter(function(e){ return e.zone === 'checklist'; }).forEach(function(evt){
       if(evt.code === 'BMA'){
-        // VIP bags choice happens after Event 11, before scanner Log Out and Event 12
+        // VIP bags choice happens after Event 12, before scanner Log Out and Event 13
         var vipLabel = document.createElement('div');
         vipLabel.className = 'mini-section-label pink';
         vipLabel.textContent = '⭐ VIP Bags — Choose One';
@@ -1217,7 +1221,7 @@
         // Scanner Log Out happens right before the "all scanners accounted for" check
         var label = document.createElement('div');
         label.className = 'mini-section-label';
-        label.textContent = '📡 Scanner Log Out — before Event 12';
+        label.textContent = '📡 Scanner Log Out — before Event 13';
         container.appendChild(label);
         SCANNERS.forEach(function(num){
           container.appendChild(buildScannerTile(num, 'out'));
