@@ -517,22 +517,34 @@
   }
 
   function load(){
-    var savedDate = localStorage.getItem('spur_shift_date');
-    if(savedDate === todayStr()){
-      state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
-      if(!state.entries) state.entries = [];
-    } else {
+    // Everything here is wrapped so that a corrupted saved state (e.g. an interrupted
+    // write leaving malformed JSON) or a browser that blocks localStorage can never take
+    // down the whole console — worst case it just starts the shift view fresh.
+    try {
+      var savedDate = localStorage.getItem('spur_shift_date');
+      if(savedDate === todayStr()){
+        state = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
+        if(!state || !state.entries || !Array.isArray(state.entries)) state = { entries: [] };
+      } else {
+        state = { entries: [] };
+        persistState();
+      }
+      document.getElementById('flightInput').value = localStorage.getItem('spur_flight') || 'ANA NH212';
+    } catch(e){
       state = { entries: [] };
-      persistState();
+      document.getElementById('flightInput').value = 'ANA NH212';
     }
-    document.getElementById('flightInput').value = localStorage.getItem('spur_flight') || 'ANA NH212';
   }
   function persistState(){
-    localStorage.setItem('spur_shift_date', todayStr());
-    localStorage.setItem('spur_shift_state', JSON.stringify(state));
+    try {
+      localStorage.setItem('spur_shift_date', todayStr());
+      localStorage.setItem('spur_shift_state', JSON.stringify(state));
+    } catch(e){ /* storage blocked/full — the in-memory shift still works for this session */ }
   }
   function persistFields(){
-    localStorage.setItem('spur_flight', document.getElementById('flightInput').value.trim());
+    try {
+      localStorage.setItem('spur_flight', document.getElementById('flightInput').value.trim());
+    } catch(e){}
   }
 
   // ---- Toast ----
@@ -601,8 +613,23 @@
 
   function fire(code, label, text, field){
     persistFields();
-    submitToForm(text, field).catch(function(){ /* opaque no-cors response — errors are rare/network-only */ });
-    state.entries.push({ code:code, time:nowTime(), label:label });
+    var entry = { code:code, time:nowTime(), label:label };
+    // no-cors responses are opaque, so HTTP-level problems can't be seen — but a REJECTED
+    // fetch means the request never left the phone at all (no signal / offline). In that
+    // case the honest state is "not logged": the local entry is rolled back so the tile
+    // un-greens and can simply be tapped again once there's signal — otherwise the
+    // once-per-shift guards would block the retry and the submission would be silently
+    // lost while the console showed it as done.
+    submitToForm(text, field).catch(function(){
+      var idx = state.entries.indexOf(entry);
+      if(idx !== -1){
+        state.entries.splice(idx, 1);
+        persistState();
+        render();
+      }
+      showToast('⚠️ No connection — NOT sent to the Sheet. Tap it again once you have signal.', '📶');
+    });
+    state.entries.push(entry);
     persistState();
     justLoggedCode = code;
     render();
@@ -611,6 +638,12 @@
   function logChecklistEvent(evt){
     if(evt.once && entriesFor(evt.code).length > 0){
       showToast('Already logged this shift — no need to log it again', '🔒');
+      return;
+    }
+    // Mutually exclusive pairs (VIP Loaded vs NIL VIP Loaded): once one is logged, the
+    // other is blocked for the shift, so the Sheet can never get contradictory entries.
+    if(evt.exclusiveWith && entriesFor(evt.exclusiveWith).length > 0){
+      showToast('The other VIP option was already logged this shift — can\'t log both', '🔒');
       return;
     }
     fire(evt.code, evt.label, evt.text({ flight: currentFlight() }));
@@ -791,6 +824,26 @@
     }
   }
 
+  // Native barcode detection — this is the big one for Android. Chrome on Android exposes the
+  // phone's own ML-based barcode engine (the same one the built-in camera app uses to scan QR
+  // codes) to web pages via the BarcodeDetector API. It is dramatically better than jsQR at
+  // real-world conditions — glare, low light, off-angle shots, imperfect focus — which is
+  // exactly the gap staff have noticed: "the normal camera reads it fine, the console can't."
+  // When available it runs FIRST on every live frame and every native-camera photo; the full
+  // existing jsQR chain (plain read + contrast boost + centre crop + glare-safe boost) still
+  // runs unchanged as the fallback, so browsers without the API (e.g. iOS Safari — where
+  // scanning already works well) behave exactly as before. Feature-detected, zero risk.
+  var nativeDetector = null;
+  if('BarcodeDetector' in window){
+    try {
+      BarcodeDetector.getSupportedFormats().then(function(formats){
+        if(formats && formats.indexOf('qr_code') !== -1){
+          nativeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        }
+      }).catch(function(){ /* leave nativeDetector null — jsQR carries on as before */ });
+    } catch(e){ /* same — fall back to jsQR silently */ }
+  }
+
   // Live video frames from getUserMedia on Android are frequently lower quality than what the
   // phone's own camera app produces, and continuous-video autofocus is a lot less reliable than
   // the phone's own camera app — which is exactly why "just scanning normally" already works
@@ -842,20 +895,48 @@
            !document.getElementById('scanOverlay').classList.contains('show')){
           return;
         }
-        var canvas = document.getElementById('scanCanvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var code = attemptAllReads(imageData, bitmap, canvas.width, canvas.height);
-        btn.disabled = false;
-        btn.textContent = '📷 Or open your camera app to take a photo';
-        overlay.classList.remove('show');
-        if(code && code.data){
-          handleScanResult(code.data);
+        var finish = function(code){
+          // Re-check staleness — the native-detector attempt below adds an extra async hop,
+          // and the overlay could have closed (or reopened for a different scanner) meanwhile.
+          if(scanState.num !== capturedNum || scanState.dir !== capturedDir ||
+             !document.getElementById('scanOverlay').classList.contains('show')){
+            return;
+          }
+          btn.disabled = false;
+          btn.textContent = '📷 Or open your camera app to take a photo';
+          overlay.classList.remove('show');
+          if(code && code.data){
+            // Cancel any pending live-loop frame before handing over, so the mismatch branch
+            // (which schedules its own next frame) can't leave two loops running.
+            if(scanState.rafId){ cancelAnimationFrame(scanState.rafId); scanState.rafId = null; }
+            handleScanResult(code.data);
+          } else {
+            statusEl.textContent = "Couldn't find a code in that photo — try again, angle the sticker to avoid glare, or keep pointing the camera below.";
+          }
+        };
+        var jsqrFallback = function(){
+          if(!window.jsQR){ finish(null); return; }
+          var canvas = document.getElementById('scanCanvas');
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          finish(attemptAllReads(imageData, bitmap, canvas.width, canvas.height));
+        };
+        if(nativeDetector){
+          // Native ML engine first — same decoder the phone's own camera app uses, and by far
+          // the most likely to read a real-world photo (glare, angle, imperfect focus). Falls
+          // through to the full jsQR chain if it finds nothing.
+          nativeDetector.detect(bitmap).then(function(codes){
+            if(codes && codes.length && codes[0].rawValue){
+              finish({ data: codes[0].rawValue });
+            } else {
+              jsqrFallback();
+            }
+          }).catch(jsqrFallback);
         } else {
-          statusEl.textContent = "Couldn't find a code in that photo — try again, angle the sticker to avoid glare, or keep pointing the camera below.";
+          jsqrFallback();
         }
       })
       .catch(function(){
@@ -961,9 +1042,13 @@
   }
 
   function scanLoop(){
-    if(!window.jsQR){
-      document.getElementById('scanStatus').textContent = 'QR scanning library failed to load — check your connection, or scan the sticker with your normal camera/QR app instead.';
-      return;
+    if(!window.jsQR && !nativeDetector){
+      // jsQR failed to load. If this browser has the native detector (or it's still finishing
+      // its async feature check), keep the loop alive on that instead of giving up.
+      if(!('BarcodeDetector' in window)){
+        document.getElementById('scanStatus').textContent = 'QR scanning library failed to load — check your connection, or scan the sticker with your normal camera/QR app instead.';
+        return;
+      }
     }
     var video = document.getElementById('scanVideo');
     var canvas = document.getElementById('scanCanvas');
@@ -972,29 +1057,49 @@
       canvas.height = video.videoHeight;
       var ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      // Plain full-frame read, exactly as before — this always runs, every frame, so nothing
-      // that used to scan cleanly can ever regress because of the extra passes below.
-      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-      if(!code){
-        // Only reached when the plain read just failed on this frame — try one extra
-        // strategy (rotating frame by frame) to help with faded/dirty/glared or small/far
-        // codes, without adding cost to the frames that already succeed normally.
-        var mode = scanState.frameCount % 3;
-        scanState.frameCount++;
-        if(mode === 0){
-          boostContrast(imageData);
-          code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-        } else if(mode === 1){
-          code = scanCenterCrop(video, canvas.width, canvas.height);
-        } else {
-          boostContrastGlareSafe(imageData);
-          code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-        }
+      // Native engine first (async, non-blocking — at most one detect in flight at a time so
+      // it can never pile up). The jsQR passes below still run every frame regardless, so this
+      // is purely additive: whichever engine finds the code first wins.
+      if(nativeDetector && !scanState.nativePending){
+        scanState.nativePending = true;
+        var capturedNum = scanState.num, capturedDir = scanState.dir;
+        nativeDetector.detect(canvas).then(function(codes){
+          scanState.nativePending = false;
+          if(codes && codes.length && codes[0].rawValue &&
+             scanState.num === capturedNum && scanState.dir === capturedDir &&
+             document.getElementById('scanOverlay').classList.contains('show')){
+            // Cancel the pending frame first so handleScanResult's mismatch branch (which
+            // schedules its own next frame) can never leave two loops running at once.
+            if(scanState.rafId){ cancelAnimationFrame(scanState.rafId); scanState.rafId = null; }
+            handleScanResult(codes[0].rawValue);
+          }
+        }).catch(function(){ scanState.nativePending = false; });
       }
-      if(code && code.data){
-        handleScanResult(code.data);
-        return;
+      if(window.jsQR){
+        // Plain full-frame read, exactly as before — this always runs, every frame, so nothing
+        // that used to scan cleanly can ever regress because of the extra passes below.
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+        if(!code){
+          // Only reached when the plain read just failed on this frame — try one extra
+          // strategy (rotating frame by frame) to help with faded/dirty/glared or small/far
+          // codes, without adding cost to the frames that already succeed normally.
+          var mode = scanState.frameCount % 3;
+          scanState.frameCount++;
+          if(mode === 0){
+            boostContrast(imageData);
+            code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+          } else if(mode === 1){
+            code = scanCenterCrop(video, canvas.width, canvas.height);
+          } else {
+            boostContrastGlareSafe(imageData);
+            code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+          }
+        }
+        if(code && code.data){
+          handleScanResult(code.data);
+          return;
+        }
       }
     }
     scanState.rafId = requestAnimationFrame(scanLoop);
@@ -1035,6 +1140,7 @@
     scanState.torchOn = false;
     scanState.zoomLevels = null;
     scanState.zoomIndex = 0;
+    scanState.nativePending = false;
     document.getElementById('scanTorchBtn').style.display = 'none';
     document.getElementById('scanTorchBtn').classList.remove('torch-on');
     document.getElementById('scanZoomBtn').style.display = 'none';
@@ -1115,7 +1221,7 @@
               TS_NAMES.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<button id="supervisorSignInBtn" ' + (done ? '' : 'disabled') + '>🖊️ Log Sign-In</button>' +
+          '<button id="supervisorSignInBtn" disabled>' + (done ? '✅ Signed in' : '🖊️ Log Sign-In') + '</button>' +
         '</div>' +
         '<div class="signin-status ' + (done ? 'ok' : 'pending') + '">' +
           (done ? ('✅ Signed in at ' + hits[hits.length-1].time) : 'Choose a name, then tap the button to sign in') +
@@ -1234,10 +1340,13 @@
   function buildVipTile(evt){
     var hits = entriesFor(evt.code);
     var done = hits.length > 0;
+    var otherChosen = evt.exclusiveWith && entriesFor(evt.exclusiveWith).length > 0;
     var btn = document.createElement('button');
     btn.setAttribute('data-code', evt.code);
     btn.className = 'evt ' + (done ? 'done' : 'pending');
-    var statusText = done ? ('✓ ' + hits[hits.length-1].time) : 'Tap to log';
+    if(otherChosen){ btn.style.opacity = '.45'; }
+    var statusText = done ? ('✓ ' + hits[hits.length-1].time)
+      : (otherChosen ? 'Other option chosen' : 'Tap to log');
     btn.innerHTML = '<span class="dot">' + evt.icon + '</span><span class="label">' + evt.label + '</span><span class="status">' + statusText + '</span>';
     btn.onclick = function(){ logChecklistEvent(evt); };
     return btn;
@@ -1284,6 +1393,12 @@
     }
   }
 
+  // Labels are rendered via innerHTML, and Remarks labels contain free-typed text — escape
+  // it so a typed "<" or similar can never break the Activity log's markup.
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function renderLog(){
     var list = document.getElementById('logList');
     var sorted = state.entries.slice().sort(function(a,b){ return a.time > b.time ? -1 : 1; });
@@ -1292,7 +1407,7 @@
       return;
     }
     list.innerHTML = sorted.map(function(e){
-      return '<div class="log-row"><div class="log-time">' + e.time + '</div><div class="log-desc">' + e.label + '</div></div>';
+      return '<div class="log-row"><div class="log-time">' + escapeHtml(e.time) + '</div><div class="log-desc">' + escapeHtml(e.label) + '</div></div>';
     }).join('');
   }
 
