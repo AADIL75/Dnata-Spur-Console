@@ -405,7 +405,13 @@
 <canvas id="scanCanvas" style="display:none;"></canvas>
 
 <!-- QR decoding library, used only for the camera-based scanner Log In/Out below -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<!-- Subresource Integrity pinned to the exact jsqr@1.4.0/dist/jsQR.js bytes (verified against
+     jsDelivr's own published file hash before adding this) — if the CDN or package were ever
+     compromised, the browser refuses to run a script that doesn't match this hash, rather than
+     silently executing whatever comes back. -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+        integrity="sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx"
+        crossorigin="anonymous"></script>
 <script>
   // ---- Google Form this console submits to (decoded from your printed QR codes) ----
   var FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSdn0IWumBH5a-OJ519QycvCNawb6NvdObF_kUsKNvla_nctgQ/formResponse';
