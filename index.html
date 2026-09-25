@@ -541,6 +541,22 @@
       document.getElementById('flightInput').value = 'ANA NH212';
     }
   }
+  // Re-reads today's shift from storage. Needed because a scanner sticker scanned with the
+  // phone's own camera opens the console in a NEW tab — without this, the tab staff already
+  // had open would keep its stale in-memory copy, show the scanner as not done, and (worse)
+  // overwrite the new tab's entry the next time anything is tapped there.
+  function syncFromStorage(){
+    try {
+      if(localStorage.getItem('spur_shift_date') !== todayStr()) return;
+      var s = JSON.parse(localStorage.getItem('spur_shift_state') || '{"entries":[]}');
+      if(s && Array.isArray(s.entries)) state = s;
+    } catch(e){ /* keep the in-memory copy */ }
+  }
+  function syncAndRenderIfChanged(){
+    var before = JSON.stringify(state);
+    syncFromStorage();
+    if(JSON.stringify(state) !== before) render();
+  }
   function persistState(){
     try {
       localStorage.setItem('spur_shift_date', todayStr());
@@ -574,6 +590,9 @@
     document.getElementById('modalBody').textContent = opts.body || '';
     var confirmBtn = document.getElementById('modalConfirmBtn');
     confirmBtn.textContent = opts.confirmLabel || 'Confirm';
+    // showNotice() below reuses this modal as a single-button message — reset its tweaks
+    confirmBtn.style.background = opts.confirmColor || '';
+    document.getElementById('modalCancelBtn').style.display = opts.noCancel ? 'none' : '';
     var overlay = document.getElementById('modalOverlay');
     overlay.classList.add('show');
 
@@ -586,6 +605,14 @@
     confirmBtn.onclick = function(){ cleanup(); if(opts.onConfirm) opts.onConfirm(); };
     document.getElementById('modalCancelBtn').onclick = function(){ cleanup(); };
     overlay.onclick = function(e){ if(e.target === overlay) cleanup(); };
+  }
+
+  // Big, can't-miss single-button message (used for the result of a sticker scan).
+  function showNotice(icon, title, body, ok){
+    showConfirm({
+      icon: icon, title: title, body: body, confirmLabel: 'OK', noCancel: true,
+      confirmColor: ok === false ? 'var(--red)' : 'var(--green)'
+    });
   }
 
   function newShift(){
@@ -619,29 +646,35 @@
 
   function fire(code, label, text, field){
     persistFields();
-    var entry = { code:code, time:nowTime(), label:label };
+    syncFromStorage(); // never build on a stale copy — see syncFromStorage()
+    var entry = { code:code, time:nowTime(), label:label, id: Date.now() + '-' + Math.random().toString(36).slice(2) };
     // no-cors responses are opaque, so HTTP-level problems can't be seen — but a REJECTED
     // fetch means the request never left the phone at all (no signal / offline). In that
     // case the honest state is "not logged": the local entry is rolled back so the tile
     // un-greens and can simply be tapped again once there's signal — otherwise the
     // once-per-shift guards would block the retry and the submission would be silently
     // lost while the console showed it as done.
-    submitToForm(text, field).catch(function(){
-      var idx = state.entries.indexOf(entry);
+    var result = submitToForm(text, field).then(function(){ return true; }, function(){
+      syncFromStorage();
+      var idx = -1;
+      for(var i = 0; i < state.entries.length; i++){ if(state.entries[i].id === entry.id){ idx = i; break; } }
       if(idx !== -1){
         state.entries.splice(idx, 1);
         persistState();
         render();
       }
       showToast('⚠️ No connection — NOT sent to the Sheet. Tap it again once you have signal.', '📶');
+      return false;
     });
     state.entries.push(entry);
     persistState();
     justLoggedCode = code;
     render();
+    return result; // resolves true = request left the phone, false = no connection (rolled back)
   }
 
   function logChecklistEvent(evt){
+    syncFromStorage();
     if(evt.once && entriesFor(evt.code).length > 0){
       showToast('Already logged this shift — no need to log it again', '🔒');
       return;
@@ -684,6 +717,7 @@
   }
 
   function logSupervisorSignin(){
+    syncFromStorage();
     if(entriesFor('SIG').length > 0){
       showToast('Supervisor already signed in this shift', '🔒');
       return;
@@ -726,6 +760,7 @@
   }
 
   function openScanner(num, dir){
+    syncFromStorage();
     if(entriesFor(scannerCode(num, dir)).length > 0){
       showToast('Scanner ' + num + ' already logged ' + dir + ' this shift', '🔒');
       return;
@@ -1111,10 +1146,27 @@
     scanState.rafId = requestAnimationFrame(scanLoop);
   }
 
+  // New-style stickers (Rev3) carry a short console link like ".../?scan=402-in" instead of
+  // the long Google Form link. Returns {num, dir} for a valid scanner, otherwise null.
+  function parseScanParam(raw){
+    var m = /^(\d{3})-(in|out)$/i.exec(String(raw || '').trim());
+    if(!m || SCANNERS.indexOf(m[1]) === -1) return null;
+    return { num: m[1], dir: m[2].toLowerCase() };
+  }
+  function scanParamFromUrl(rawUrl){
+    try { return parseScanParam(new URL(rawUrl).searchParams.get('scan')); } catch(e){ return null; }
+  }
+
   function handleScanResult(rawText){
     var value = parseFormFieldValue(rawText);
     var expected = scannerText(scanState.num, scanState.dir);
-    if(value && value.trim() === expected){
+    var sticker = scanParamFromUrl(rawText);
+    // Accepts both the original Form-link stickers and the new short console-link stickers
+    var isMatch = (value && value.trim() === expected) ||
+                  (sticker && sticker.num === scanState.num && sticker.dir === scanState.dir);
+    if(isMatch){
+      value = expected;
+      syncFromStorage();
       var num = scanState.num, dir = scanState.dir;
       // Defense in depth: the live scan loop and a manual "clearer photo" capture can both be
       // in flight at once (the photo capture is async and doesn't pause the live loop), so in
@@ -1164,6 +1216,7 @@
   // Form field as this console does, so the Sheet is already correct — this only updates the
   // LOCAL checklist so it stops showing the item as outstanding. No second submission is sent.
   function markScannerDoneLocally(num, dir){
+    syncFromStorage();
     if(entriesFor(scannerCode(num, dir)).length > 0){
       showToast('Scanner ' + num + ' already logged ' + dir + ' this shift', '🔒');
       return;
@@ -1176,7 +1229,9 @@
       confirmLabel:'Yes, already scanned',
       onConfirm:function(){
         closeScanner();
+        syncFromStorage();
         var code = scannerCode(num, dir);
+        if(entriesFor(code).length > 0){ render(); return; }
         state.entries.push({ code:code, time:nowTime(), label:'Scanner ' + num + ' — Log ' + dirLabel + ' (marked done here — scanned via phone camera)' });
         persistState();
         justLoggedCode = code;
@@ -1417,11 +1472,55 @@
     }).join('');
   }
 
+  // A Rev3 scanner sticker scanned with the phone's OWN camera opens this page as
+  // ".../?scan=402-in". Log it exactly as the in-console scanner would (same Sheet text,
+  // same duplicate protection), then strip the parameter so a reload/back can't resend it.
+  function handleScanFromUrl(){
+    var raw;
+    try { raw = new URLSearchParams(window.location.search).get('scan'); } catch(e){ return; }
+    if(raw === null) return;
+    try { history.replaceState(null, '', window.location.pathname + window.location.hash); } catch(e){}
+
+    var s = parseScanParam(raw);
+    if(!s){
+      showNotice('⚠️', 'Sticker not recognised', "This QR code isn't one of the scanner stickers for this console. Nothing was logged.", false);
+      return;
+    }
+    var code = scannerCode(s.num, s.dir);
+    var dirLabel = s.dir === 'in' ? 'In' : 'Out';
+    syncFromStorage();
+    var already = entriesFor(code);
+    if(already.length > 0){
+      showNotice('🔒', 'Scanner ' + s.num + ' — Log ' + dirLabel + ' already done',
+        'Already logged at ' + already[already.length - 1].time + ' this shift. Nothing was sent again.', true);
+      return;
+    }
+    showToast('Logging Scanner ' + s.num + ' — Log ' + dirLabel + '…', '📡');
+    fire(code, 'Scanner ' + s.num + ' — Log ' + dirLabel, scannerText(s.num, s.dir)).then(function(ok){
+      if(ok){
+        showNotice(s.dir === 'in' ? '✅' : '👋', 'Scanner ' + s.num + ' — Logged ' + dirLabel,
+          'Sent to the Sheet at ' + nowTime() + '. You can carry on with the checklist.', true);
+      } else {
+        showNotice('📶', 'NOT logged — no connection',
+          'Scanner ' + s.num + ' — Log ' + dirLabel + ' did not reach the Sheet. Get signal and scan the sticker again.', false);
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
     load();
     document.getElementById('flightInput').addEventListener('change', persistFields);
     renderRemarks();
     render();
+    handleScanFromUrl();
+    // Keep every open copy of the console in step (a sticker scan opens a new tab)
+    window.addEventListener('storage', function(e){
+      if(e.key === 'spur_shift_state' || e.key === 'spur_shift_date') syncAndRenderIfChanged();
+    });
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') syncAndRenderIfChanged();
+    });
+    window.addEventListener('focus', syncAndRenderIfChanged);
   });
 </script>
 </body>
